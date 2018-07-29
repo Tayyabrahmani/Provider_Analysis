@@ -1,0 +1,1087 @@
+### Cleaning Data
+
+library(stringr) 
+library(tidyr)
+library(dplyr)
+
+temp2 = read.csv('Required_data_new.csv')
+temp2 = separate(temp2, col = "Phone.2", into = c("Phone.2", "Phone.3"), sep = "/")
+temp2 = temp2[, -8]
+x = temp2$Phone.2
+
+z = str_replace_all(x, "[^[:alnum:]]", "")
+z = str_extract(z, "[0-9]+")
+temp2$Phone.2 = z
+
+write.csv(temp2, 'Required_data_new.csv', row.names = FALSE)
+
+
+### Cleaning Data
+
+data = read.csv("Old_Required_data.csv")
+data = unique(data)
+data2 = read.csv("Required_data_new.csv")
+
+vec = c("Arizona|Prioritycare|MRR|03151041", "Evolent Health|Premier ACA RADV OON|MRR|03161008", "Medpoint|PCP/SPC Onshore|MRR|03150714", "Evolent Health|Medicare- Premier|MRR|03160755", "Evolent Health|MCare-Premier Non-PHN|MRR|03160861", "Evolent Health|Medicare- Premier PHN|MRR|03160860", "Evolent Health|Medicare - MedStar|MRR|03160637", "Evolent Health|Baptist Health Plan|MRR|03160397", "ACP|ACO|MRR|03160160", "NAMM CA|Premier ACO|MRR|03160158", "Medpoint|PCP/SPC Retrival Only|MRR|03151037", "Medpoint|PCP/SPC Retrival Only|MRR|03151037")
+
+temp2 = data2
+temp = data
+temp2$Year = ifelse(temp2$Project.Name %in% vec, 1, temp2$Year)
+
+temp2 = temp2 %>% select(Provider..NPI, Provider..Client.Name, Project.Name, Year, Provider..ZIP.Code, Phone.1.Filtered.Text, Phone.2, Full_Name, Address, Location..Location.ID, Provider..Fax.Number, Provider....of.Charts, Provider..Num.of.Charts.Recovered, Provider....of.Charts.Recovered)
+temp2 = temp2[-c(8932,8033),]
+
+temp2$Phone.2 = as.factor(temp2$Phone.2)
+temp2$Phone.1.Filtered.Text = as.character(temp2$Phone.1.Filtered.Text)
+temp2$Phone.2 = as.character(temp2$Phone.2)
+temp2$Phone.1.Filtered.Text = as.integer(temp2$Phone.1.Filtered.Text)
+temp2$Phone.2 = as.character(temp2$Phone.2)
+
+
+write.csv(temp2, "Required_data_new1_1.csv", row.names = FALSE)
+
+
+### Cleaning Phone Number
+
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(readxl)
+
+data = read_excel('New_providerDB.xlsx')
+
+df = x
+df$Phone.1.Filtered.Text = as.character(df$Phone.1.Filtered.Text)
+names(df)[6] = paste("Primary Phone No")
+df$`Primary Phone No` = as.numeric(df$`Primary Phone No`)
+
+df$`Primary Phone No` = ifelse(df$`Primary Phone No` == "9999999999", "", df$`Primary Phone No`)
+df$`Primary Phone No` = ifelse(df$`Primary Phone No` == "9999999999.0", "", df$`Primary Phone No`)
+df$`Primary Phone No` = ifelse(df$`Primary Phone No` == "0", "", df$`Primary Phone No`)
+df$`Primary Phone No` = ifelse(df$`Primary Phone No` == "770", "", df$`Primary Phone No`)
+df$`Primary Phone No` = ifelse(df$`Primary Phone No` == "14548000000", "", df$`Primary Phone No`)
+df$`Primary Phone No` = ifelse(df$`Primary Phone No` == "45221.22", "", df$`Primary Phone No`)
+df$`Primary Phone No` = ifelse(df$`Primary Phone No` == "8541235.00", "", df$`Primary Phone No`)
+df$`Primary Phone No` = ifelse(df$`Primary Phone No` == "9207400.00", "", df$`Primary Phone No`)
+df$`Primary Phone No` = ifelse(df$`Primary Phone No` == "52242285.00", "", df$`Primary Phone No`)
+df$`Primary Phone No` = ifelse(df$`Primary Phone No` == "70878391.00", "", df$`Primary Phone No`)
+df$`Primary Phone No` = ifelse(df$`Primary Phone No` == "175022300.00", "", df$`Primary Phone No`)
+df$`Primary Phone No` = ifelse(df$`Primary Phone No` == "239858805.00", "", df$`Primary Phone No`)
+df$`Primary Phone No` = ifelse(df$`Primary Phone No` == "228207419.00", "", df$`Primary Phone No`)
+df$`Primary Phone No` = ifelse(df$`Primary Phone No` == "45221", "", df$`Primary Phone No`)
+df$`Primary Phone No` = as.numeric(df$`Primary Phone No`)
+df$`Primary Phone No` = round(df$`Primary Phone No`)
+
+df1 =df
+names(df)[7] = paste("Secondary Phone No")
+df$Phone.2 = trunc(df$Phone.2, 10)
+df$`Secondary Phone No`= as.character(df$`Secondary Phone No`)
+df$`Secondary Phone No` = substr(df$`Secondary Phone No`, start = 1, stop = 10)
+df$`Secondary Phone No`= as.numeric(df$`Secondary Phone No`)
+
+df$`Secondary Phone No`= ifelse(df$`Secondary Phone No` == 100, "", df$`Secondary Phone No`)
+df$`Secondary Phone No`= ifelse(df$`Secondary Phone No` == 104, "", df$`Secondary Phone No`)
+df$`Secondary Phone No`= ifelse(df$`Secondary Phone No` == 107, "", df$`Secondary Phone No`)
+df$`Secondary Phone No`= ifelse(df$`Secondary Phone No` == 114, "", df$`Secondary Phone No`)
+df$`Secondary Phone No`= ifelse(df$`Secondary Phone No` == 118, "", df$`Secondary Phone No`)
+df$`Secondary Phone No`= ifelse(df$`Secondary Phone No` == 1215, "", df$`Secondary Phone No`)
+df$`Secondary Phone No`= ifelse(df$`Secondary Phone No` == 125, "", df$`Secondary Phone No`)
+df$`Secondary Phone No`= ifelse(df$`Secondary Phone No` == 13860, "", df$`Secondary Phone No`)
+df$`Secondary Phone No`= ifelse(df$`Secondary Phone No` == 1610, "", df$`Secondary Phone No`)
+df$`Secondary Phone No`= ifelse(df$`Secondary Phone No` == 2, "", df$`Secondary Phone No`)
+df$`Secondary Phone No`= ifelse(df$`Secondary Phone No` == 1185, "", df$`Secondary Phone No`)
+df$`Secondary Phone No`= ifelse(df$`Secondary Phone No` == 102, "", df$`Secondary Phone No`)
+df$`Secondary Phone No`= ifelse(df$`Secondary Phone No` == 9999999999, "", df$`Secondary Phone No`)
+
+names(df)[3] = "Project Name"
+names(df)[1] = "Provider Full_Name + NPI"
+names(df)[10] = "Location ID"
+names(df)[5] = "Zip Code"
+names(df)[4] = "Year"
+names(df)[2] = "Client Name"
+names(df)[8] = "Full Name"
+names(df)[11] = "Fax Number"
+names(df)[12] = "# of Charts"
+names(df)[13] = "# of Charts Recovered"
+names(df)[14] = "% of Charts Recovered"
+names(df)[15] = "Processed Full Name"
+
+df1 = df1 %>% select(1,2,3,4,6,7,10,12,13,14,9,5,8,15)
+df = df[-c()]
+write.csv(df1, 'Updated ProviderDB_4.csv', row.names = FALSE)
+
+df1$`Zip Code` = as.character(df1$`Zip Code`)
+df1$`Zip Code` = substr(df$`Zip Code`, start = 1, stop = 5)
+
+
+
+f = read.csv('Required_data_new1_1_.csv')
+
+f1 = f %>% select(3,10,1,6,9,2)
+names(f1)[1] = "Project Name"
+names(f1)[3] = "Provider Full_Name + NPI"
+names(f1)[2] = "Location ID"
+names(f1)[5] = "Address"
+names(f1)[4] = "Primary Phone No"
+names(f1)[6] = "Client Name"
+
+f1$`Provider Full_Name + NPI` = str_replace_all(f1$`Provider Full_Name + NPI`,",", "")
+f1$Address  = str_replace_all(f1$Address ,",", " ")
+f1$`Project Name` = as.character(f1$`Project Name`)
+f1$`Location ID` = as.character(f1$`Location ID`)
+f1$`Primary Phone No` = as.character(f1$`Primary Phone No`)
+f1$`Client Name` = as.character(f1$`Client Name`)
+
+
+data1 = left_join(data, f1, by = c("Client Name","Project Name","Location ID","Primary Phone No", "Provider Full_Name + NPI"))
+
+x$FP = str_replace_all(x$FP, ",","")
+x$Address = str_replace_all(x$Address, ",", "")
+
+
+### Extracting Digits
+
+library(tibble)
+library(stringr)
+data = read.csv("as.csv")
+
+data = data[, -6]
+data = add_column(data, Provider..Client.Name = "Aetna Commercial", .after = 1)
+data = add_column(data, Project.Name = "Aetna|2016 Commercial|MRR|03160877", .after = 2)
+
+data<- data[-seq(nrow(data),nrow(data)-4), ]
+
+regexp <- "[[:digit:]]+"
+x = str_extract(data$Project.Name, regexp)
+
+data$Year = x
+
+write.csv(data, 'as.csv', row.names = FALSE)
+
+
+### Extracting Phone number 2
+
+library(stringr)
+library(tidyr)
+library(dplyr)
+
+temp2 = read.csv('Required_data_new.csv')
+temp2 = separate(temp2, col = "Phone.2", into = c("Phone.2", "Phone.3"), sep = "/")
+temp2 = temp2[, -8]
+
+vec = c("Arizona|Prioritycare|MRR|03151041", "Evolent Health|Premier ACA RADV OON|MRR|03161008", "Medpoint|PCP/SPC Onshore|MRR|03150714", "Evolent Health|Medicare- Premier|MRR|03160755", "Evolent Health|MCare-Premier Non-PHN|MRR|03160861", "Evolent Health|Medicare- Premier PHN|MRR|03160860", "Evolent Health|Medicare - MedStar|MRR|03160637", "Evolent Health|Baptist Health Plan|MRR|03160397", "ACP|ACO|MRR|03160160", "NAMM CA|Premier ACO|MRR|03160158", "Medpoint|PCP/SPC Retrival Only|MRR|03151037", "Medpoint|PCP/SPC Retrival Only|MRR|03151037")
+
+
+x = temp2$Full_Name
+temp2$Full_Name = as.character(temp2$Full_Name)
+
+z = str_replace_all(x, "[^[:alnum:]]", " ")
+z = str_extract(z, "[0-9]+")
+temp2$Full_Name = z
+temp2$Full_Name = as.factor(temp2$Full_Name)
+
+write.csv(a, 'Required_data_new_1.csv', row.names = FALSE)
+
+
+### Extracting Year
+
+library(dplyr)
+library(stringr)
+library(tidyr)
+library(data.table) 
+
+
+data = read.csv("total_data1.csv")
+data<- data[-seq(nrow(data),nrow(data)-4), ]
+
+regexp <- "[[:digit:]]+"
+x = str_extract(data$Project.Name, regexp)
+
+data$Year = x
+
+write.csv(data, 'total_data1.csv', row.names = FALSE)
+
+
+### Correcting Call_logs
+
+library(lubridate)
+library(dplyr)
+library(tidyr)
+
+data = read.csv('Location Call Log.csv')
+project_deadline = read.csv('Project Deadline.csv')
+call = read.csv('No_of_calls.csv')
+full_data = read.csv('Updated ProvDB.csv')
+pnp = read.csv('pnp.csv')
+
+data = data[,-c(8)]
+names(data)[1] = paste('Location.ID') 
+names(data)[2] = paste('Project.Name') 
+
+data1 = data %>% group_by(Location.ID) %>% summarise(no_of_calls_comments = n())
+
+data = left_join(data, call, by = c('Project.Name', 'Location.ID'))
+data = left_join(data, data1, by = 'Location.ID')
+
+data = data[data$No.of.Calls== data$no_of_calls_comments, ]
+data = data[!is.na(data$Project.Name),]
+
+df = data %>% group_by(Location.ID) %>% slice(which.min(as.Date(Created.Date, '%m/%d/%Y')))
+
+df1 = left_join(df, project_deadline, by = "Project.Name")
+
+df1 = df1[df1$Project.End.Date...Deadline != '',]
+
+df1$Project.End.Date...Deadline = as.character(df1$Project.End.Date...Deadline)
+df1$Project.End.Date...Deadline = as.Date(df1$Project.End.Date...Deadline , format = "%m/%d/%Y")
+
+df1$Created.Date = as.character(df1$Created.Date)
+df1$Created.Date = as.Date(df1$Created.Date , format = "%m/%d/%Y")
+
+df1$Project.Start.Date = as.character(df1$Project.Start.Date)
+df1$Project.Start.Date = as.Date(df1$Project.Start.Date, format = '%m/%d/%Y')
+
+df1$Diff_days = df1$Project.End.Date...Deadline - df1$Created.Date
+df1$Diff_days = as.numeric(df1$Diff_days)
+df1$project_days = df1$Project.End.Date...Deadline - df1$Project.Start.Date
+df1$project_days = as.numeric(df1$project_days)
+
+
+df2 = df1[df1$Diff_days>0,]
+df3 = df2[complete.cases(df2), ]
+
+df4 = df3 %>% select(Location.ID, Project.Name, No.of.Calls, Diff_days, project_days)
+df5 = df3 %>% select(Location.ID, Project.Name, No.of.Calls, Diff_days, project_days)
+df5$Perc = df5$Diff_days / df5$project_days
+
+data_full = left_join(full_data, pnp, by = c('Location.ID', 'Project.Name', 'Provider.Full_Name...NPI'))
+
+data_full = left_join(data_full, df4, by = c('Location.ID', 'Project.Name'))
+data_full = data_full[complete.cases(data_full), ]
+data_full$Success = ifelse(data_full$X..of.Charts.Recovered.1 > 0, 'Success', 'Not-Success')
+data_full$Success = as.factor(data_full$Success)
+
+#data_full = data_full[data_full$Project.Name != "Aetna|Commercial 2017|MRR|03171048",]
+
+final_data = data.frame()
+
+for(i in 1:nrow(data_full))
+{
+  temp = data_full %>% filter(Diff_days == i)
+  temp1 = temp %>% group_by(Success) %>% summarize(n())
+  temp1$Perc = temp1$`n()` / sum(temp1$`n()`)
+  final_data[i,1] = i
+  final_data[i,2] = temp1$Perc[2]
+}
+
+
+names(final_data)[1] = paste('No_of_days_left_before_project_deadline')
+names(final_data)[2] = paste('Probability of Retrieval')
+
+final_data = final_data[complete.cases(final_data),]
+final_data = arrange(final_data, desc(No_of_days_left_before_project_deadline))
+
+ggplot(final_data, aes(x = desc(No_of_days_left_before_project_deadline), y = `Probability of Retrieval`)) + xlab('No_of_days_left_before_project_deadline') + theme(plot.title = element_text(size=12)) + ggtitle('Prob of Charts retrieval w.r.t # of days left for project deadline') +geom_line(na.rm = TRUE) + scale_x_continuous(breaks = pretty_breaks(n = 10)) + scale_y_continuous(breaks = seq(0,1, .1), position = "right") + geom_smooth() + geom_vline(aes(xintercept = -68), col = 'red')
+boxplot(data_full, aes(x = 'FBD')
+
+
+final_data1 = data.frame()
+
+for(i in 1:nrow(data_full2))
+{
+temp = data_full %>% filter(Diff_days == i)
+temp1 = temp %>% group_by(Success) %>% summarize(n())
+temp1$Perc = temp1$`n()` / sum(temp1$`n()`)
+final_data1[i,1] = i
+final_data1[i,2] = temp1$Perc[2]
+}
+        
+names(final_data1)[1] = paste('No_of_days_left_before_project_deadline')
+names(final_data1)[2] = paste('Probability of Retrieval')
+
+final_data1 = final_data1[complete.cases(final_data1),]
+final_data1 = arrange(final_data1, desc(No_of_days_left_before_project_deadline))
+
+ggplot(final_data1, aes(x = desc(No_of_days_left_before_project_deadline), y = `Probability of Retrieval`)) + xlab('No_of_days_left_before_project_deadline') + theme(plot.title = element_text(size=12)) + ggtitle('Prob of Charts retrieval w.r.t # of days left for project deadline') +geom_line(na.rm = TRUE) + scale_x_continuous(breaks = pretty_breaks(n = 10)) + scale_y_continuous(breaks = seq(0,1, .1), position = "right") + geom_smooth() + geom_vline(aes(xintercept = -68), col = 'red')
+boxplot(data_full, aes(x = 'FBD')
+        
+        
+### Percentage of Project Left
+
+data_full1 = left_join(full_data, df5, by = c('Location.ID', 'Project.Name'))
+data_full1 = data_full1[complete.cases(data_full1), ]
+data_full1$Success = ifelse(data_full1$X..of.Charts.Recovered.1 > 0, 'Success', 'Not-Success')
+data_full1$Success = as.factor(data_full1$Success)
+data_full1$Perc = round(data_full1$Perc, 2)
+
+final_data1 = data.frame()
+
+for(i in 1:nrow(data_full1))
+{ 
+  count = 0.01
+  temp = data_full1 %>% filter(Perc == count)
+  temp1 = temp %>% group_by(Success) %>% summarize(n())
+  temp1$Perc = temp1$`n()` / sum(temp1$`n()`)
+  final_data1[i,1] = count
+  final_data1[i,2] = temp1$Perc[2]
+  count = count + 0.01
+}
+
+
+names(final_data1)[1] = paste('Index')
+names(final_data1)[2] = paste('Perc(%)')
+
+final_data1 = final_data1[complete.cases(final_data1),]
+final_data1 = arrange(final_data1, desc(Index))
+
+ggplot(final_data1, aes(x = desc(Index), y = `Perc(%)`)) + geom_line(na.rm = TRUE) + scale_y_continuous(breaks = seq(0,1, .1), position = "right") + geom_smooth() + geom_vline(aes(xintercept = -68), col = 'red')
+
+
+
+fbd = read.csv('Created Timestamp.csv')
+fbd$Created.Timestamp = as.character(fbd$Created.Timestamp)
+fbd$Created.Timestamp = strsplit(fbd$Created.Timestamp, split = ' ')
+
+
+### Getting lag dates of FBD
+
+library(dplyr)
+library(tidyr)
+library(lubridate)
+
+call_comments = read.csv('new_call_comments.csv')
+fbd = read.csv('FBD with dates.csv')
+enddate = read.csv('Project Deadline.csv')
+created_date = read.csv('location_created_date.csv')
+names(created_date)[1] = paste('Location.ID')
+
+enddate = unique(enddate)
+
+call_comments = call_comments[,-8]
+
+call_comments1  = call_comments %>% group_by(Location.ID) %>% filter(`PNP.Reason` == 'First Appointment Beyond Due Date (FBD)')
+non_fbd = unique(call_comments1$Location.ID)
+
+call_comments1 = call_comments[!(call_comments$Location.ID %in% non_fbd),]
+
+df = call_comments1 %>% group_by(Location.ID) %>% slice(which.min(as.Date(Created.Date, '%m/%d/%Y')))
+#df1 = call_comments %>% filter(Call.Outcome == "First Appointment Beyond Due Date (FBD)")
+#df1 = df1 %>% group_by(Location.ID) %>% slice(which.min(as.Date(Created.Date, '%m/%d/%Y')))
+
+df1 = left_join(df, enddate, by = "Project.Name")
+
+df1$Project.End.Date...Deadline = as.character(df1$Project.End.Date...Deadline)
+df1$Project.End.Date...Deadline = as.Date(df1$Project.End.Date...Deadline , format = "%m/%d/%Y")
+
+df1$Created.Date = as.character(df1$Created.Date)
+df1$Created.Date = as.Date(df1$Created.Date , format = "%m/%d/%Y")
+
+df1$Project.Start.Date = as.character(df1$Project.Start.Date)
+df1$Project.Start.Date = as.Date(df1$Project.Start.Date, format = '%m/%d/%Y')
+
+df2 = df1 %>% group_by(Location.ID) %>% arrange(Created.Date) %>% mutate(Diff_days = Project.End.Date...Deadline - Created.Date)
+df2$Diff_days = as.numeric(df2$Diff_days)
+
+df2$project_days = df2$Project.End.Date...Deadline - df2$Project.Start.Date
+df2$perc = as.numeric(as.character(df2$Diff_days)) / as.numeric(as.character(df2$project_days))
+df2$perc1 = ifelse(df2$perc > 0 , df2$perc, NA)
+
+ggplot() + geom_boxplot(data=fbd3, aes(x= 'FBD', y=perc), fill='light blue') + geom_boxplot(data=df2, aes(x = 'Non_FBD', y=perc1), fill='Blue') + xlab('No of days before project deadline / Total Project Days') + ylab('') + ggtitle("Boxplot of FBD and Non-FBD location")
+
+fbd_with_locdate = left_join(fbd3, created_date, by = c("Project.Name", "Location.ID"))
+non_fbd_with_locdate = left_join(df2, created_date, by = c("Project.Name", "Location.ID"))
+
+fbd_with_locdate$Location..Created.Date = as.character(fbd_with_locdate$Location..Created.Date)
+fbd_with_locdate$Location..Created.Date = as.Date(fbd_with_locdate$Location..Created.Date , format = "%m/%d/%Y")
+
+non_fbd_with_locdate$Location..Created.Date = as.character(non_fbd_with_locdate$Location..Created.Date)
+non_fbd_with_locdate$Location..Created.Date = as.Date(non_fbd_with_locdate$Location..Created.Date , format = "%m/%d/%Y")
+
+fbd_with_locdate$loc_diff = fbd_with_locdate$Created.Date - fbd_with_locdate$Location..Created.Date 
+non_fbd_with_locdate$loc_diff = non_fbd_with_locdate$Created.Date - non_fbd_with_locdate$Location..Created.Date
+
+fbd3$perc = as.numeric(as.character(fbd3$Diff_days)) / as.numeric(as.character(fbd3$project_days))
+fbd3$perc = as.numeric(as.character(fbd3$Diff_days)) / as.numeric(as.character(fbd3$project_days))
+
+
+fbd3$Diff_days = as.numeric(fbd3$Diff_days)
+mean(df2$Diff_days, na.rm = TRUE)
+mean(fbd3$Diff_days)
+
+median(df2$Diff_days, na.rm = TRUE)
+median(fbd3$Diff_days)
+
+
+
+df2 = bind_rows(df,df1)
+
+x = read.csv('call_see.csv')
+
+
+fbd1 = left_join(fbd, enddate, by = "Project.Name")
+
+fbd2 = fbd1[fbd1$PNP.Reason == "",]
+  
+#df3 = df2[df2$Location.ID ,]
+#x = tally(group_by(df2, Location.ID))
+#df3 = left_join(df2, x, by = c('Location.ID'))
+#df3 = df3[df3$n > 1,]
+#df3 = df3[,-8]
+fbd2$Project.End.Date...Deadline = as.character(fbd2$Project.End.Date...Deadline)
+fbd2$Project.End.Date...Deadline = as.Date(fbd2$Project.End.Date...Deadline , format = "%m/%d/%Y")
+
+fbd2$Project.Start.Date = as.character(fbd2$Project.Start.Date)
+fbd2$Project.Start.Date = as.Date(fbd2$Project.Start.Date , format = "%m/%d/%Y")
+
+fbd2$Created.Date = as.character(fbd2$Created.Date)
+fbd2$Created.Date = as.Date(fbd2$Created.Date , format = "%Y-%m-%d")
+
+fbd3 = fbd2 %>% group_by(Location.ID) %>% arrange(Created.Date) %>% mutate(Diff_days = Project.End.Date...Deadline - Created.Date)
+fbd3$project_days = fbd3$Project.End.Date...Deadline - fbd3$Project.Start.Date
+
+fbd3$perc = as.numeric(as.character(fbd3$Diff_days)) / as.numeric(as.character(fbd3$project_days))
+
+
+
+mad(fbd3$Diff_days, center = median(fbd3$Diff_days), constant = 1.4826,na.rm = FALSE, low = FALSE, high = FALSE)
+
+df2 = df2[-c(1:82),]
+df2 = arrange(df2, Diff_days)
+df3 = df2[df2$Diff_days > 0,]
+df3 = df3[1:81073, ]
+mad(df3$Diff_days, center = median(df3$Diff_days), constant = 1.4826,na.rm = FALSE, low = FALSE, high = FALSE)
+
+ggplot(fbd3, aes(x = Diff_days)) + geom_density()
+fbd_200 = fbd3[fbd3$Diff_days > 200, ]
+fbd_150 = fbd3[(fbd3$Diff_days > 150 & fbd3$Diff_days < 200),]
+fbd_100 = fbd3[(fbd3$Diff_days > 100 & fbd3$Diff_days < 150),]
+fbd_50 = fbd3[(fbd3$Diff_days > 50 & fbd3$Diff_days < 100),]
+fbd_0 = fbd3[(fbd3$Diff_days > 0 & fbd3$Diff_days < 50),]
+
+df_200 = df3[df3$Diff_days > 200, ]
+df_150 = df3[(df3$Diff_days > 150 & df3$Diff_days < 200),]
+df_100 = df3[(df3$Diff_days > 100 & df3$Diff_days < 150),]
+df_50 = df3[(df3$Diff_days > 50 & df3$Diff_days < 100),]
+df_0 = df3[(df3$Diff_days > 0 & df3$Diff_days < 50),]
+
+
+names(call)[2] = paste('Project.Name')
+names(call)[3] = paste('Location.ID')
+fbd_with_calls = left_join(fbd3, call, by = c('Project.Name','Location.ID'))
+fbd_with_calls$Num_of_Calls__c = as.character(fbd_with_calls$Num_of_Calls__c)
+fbd_with_calls$Num_of_Calls__c = as.numeric(fbd_with_calls$Num_of_Calls__c)
+
+ggplot(fbd_with_calls, aes(x = Num_of_Calls__c)) + geom_density()
+
+df_with_calls = left_join(df3, call, by = c('Project.Name','Location.ID'))
+df_with_calls$Num_of_Calls__c = as.character(df_with_calls$Num_of_Calls__c)
+df_with_calls$Num_of_Calls__c = as.numeric(df_with_calls$Num_of_Calls__c)
+
+ggplot(df_with_calls, aes(x = Num_of_Calls__c)) + geom_density()
+
+
+median(df_with_calls$Num_of_Calls__c)
+median(fbd_with_calls$Num_of_Calls__c)
+
+write.csv(df4, 'FBD with dates.csv', row.names = FALSE)
+
+fbd_with_locdate$loc_calldiff = fbd_with_locdate$Created.Date - fbd_with_locdate$Location..Created.Date
+non_fbd_with_locdate$loc_calldiff = non_fbd_with_locdate$Created.Date - non_fbd_with_locdate$Location..Created.Date 
+
+
+### Location Retrieval Mode
+
+library(dplyr)
+library(DMwR)
+library(tidyr)
+library(ROSE)
+library(caret)
+
+data = left_join(data, data3, by = 'Location..Location.ID')
+copy_service = c('BACTES', 'CHART PRO', 'CIOX HEALTH', 'DATA FILE', 'DIVERSIFIED', 'DYNAMIC DOCUMENT IMAGING', 'HEALTHMARK', 'HEALTHPORT', 'IDS', 'IOD', 'MIDWEST', 'MRO', 'PHOTOSTAT', 'SCANSTAT', 'STAT IMAGING')
+data$MRT.Name = toupper(data$MRT.Name)
+data$Type = ifelse(data$MRT.Name == 'RINGCENTRAL', 'Fax', '')
+data$Type = ifelse(grepl('VITELITY', data$MRT.Name) == TRUE , 'Fax', data$Type)
+data$Type = ifelse(grepl('VITALITY', data$MRT.Name) == TRUE , 'Fax', data$Type)
+data$Type = ifelse(grepl('MAIL ROOM', data$MRT.Name) == TRUE , 'Mail_Room', data$Type)
+data$Type = ifelse(grepl('CD Mailroom', data$MRT.Name) == TRUE , 'Mail_Room', data$Type)
+data$Type = ifelse(grepl('SFTP', data$MRT.Name) == TRUE , 'SFTP', data$Type)
+data$Type = ifelse(grepl('BACTES', data$MRT.Name) == TRUE , 'Copy_service', data$Type)
+data$Type = ifelse(grepl('CHART PRO', data$MRT.Name) == TRUE , 'Copy_service', data$Type)
+data$Type = ifelse(grepl('CIOX HEALTH', data$MRT.Name) == TRUE , 'Copy_service', data$Type)
+data$Type = ifelse(grepl('DATA FILE', data$MRT.Name) == TRUE , 'Copy_service', data$Type)
+data$Type = ifelse(grepl('DIVERSIFIED', data$MRT.Name) == TRUE , 'Copy_service', data$Type)
+data$Type = ifelse(grepl('DYNAMIC DOCUMENT IMAGING', data$MRT.Name) == TRUE , 'Copy_service', data$Type)
+data$Type = ifelse(grepl('HEALTHMARK', data$MRT.Name) == TRUE , 'Copy_service', data$Type)
+data$Type = ifelse(grepl('HEALTHPORT', data$MRT.Name) == TRUE , 'Copy_service', data$Type)
+data$Type = ifelse(grepl('IDS', data$MRT.Name) == TRUE , 'Copy_service', data$Type)
+data$Type = ifelse(grepl('IOD', data$MRT.Name) == TRUE , 'Copy_service', data$Type)
+data$Type = ifelse(grepl('MIDWEST', data$MRT.Name) == TRUE , 'Copy_service', data$Type)
+data$Type = ifelse(grepl('PHOTOSTAT', data$MRT.Name) == TRUE , 'Copy_service', data$Type)
+data$Type = ifelse(grepl('SCANSTAT', data$MRT.Name) == TRUE , 'Copy_service', data$Type)
+data$Type = ifelse(grepl('STAT IMAGING', data$MRT.Name) == TRUE , 'Copy_service', data$Type)
+data$Type = ifelse(data$MRT.Name == 'CHART FAST' , 'Copy_service', data$Type)
+data$Type = ifelse(data$MRT.Name == 'CHART REQUEST' , 'Copy_service', data$Type)
+data$Type = ifelse(data$MRT.Name == 'CHARTSWAP' , 'Copy_service', data$Type)
+data$Type = ifelse(data$MRT.Name == 'CNAR PENDING' , '', data$Type)
+data$Type = ifelse(grepl('EMAIL', data$MRT.Name) == TRUE , 'Email', data$Type)
+data$Type = ifelse(grepl('N/A', data$MRT.Name) == TRUE , '', data$Type)
+data$Type = ifelse(grepl('RE-UPLOAD', data$MRT.Name) == TRUE , '', data$Type)
+data$MRT.Name = ifelse(data$MRT.Name == 'N' , '', data$MRT.Name)
+data$MRT.Name = ifelse(data$MRT.Name == 'Repl' , '', data$MRT.Name)
+data$MRT.Name = ifelse(data$MRT.Name == 'REPLICATION - 87' , '', data$MRT.Name)
+data$MRT.Name = ifelse(data$MRT.Name == 'REPLICATION' , '', data$MRT.Name)
+data$MRT.Name = ifelse(data$MRT.Name == 'P' , '', data$MRT.Name)
+data$MRT.Name = ifelse(data$MRT.Name == 'QA RECON' , '', data$MRT.Name)
+data$MRT.Name = ifelse(data$MRT.Name == 'PEAK DELIVERED' , '', data$MRT.Name)
+
+data1 = data[data$MRT.Name != '', ]
+data1$Type = ifelse(data1$Type == '', 'MRT', data1$Type)
+
+df1 <- count(data1, c('Location..Location.ID','Type'))
+df = aggregate(freq ~ Location..Location.ID, df1, sum)
+df2 = left_join(df1, df, by = c('Location..Location.ID'))
+df2$Perc = df2$freq.x / df2$freq.y
+df2$Perc = round(df2$Perc, 2)
+
+df3 = df2[df2$Perc == 1.00,]
+
+data2 = unique(data1)
+data2 = data2[, -c(2,5)]
+data2 = unique(data2)
+data2 = data2[count(data2, 'Location..Location.ID') == 1,]
+data2 = data2[complete.cases(data2), ]
+
+data3 = data2
+data3 = data3[,-c(2,5)]
+data3 = unique(data3)
+data3 = data3[count(data3$Location..Location.ID) == 1,]
+
+data3 = read.csv('New_Location_pages.csv')
+fbd = read.csv('FBD_with_diffdays.csv')
+call = read.csv('No_of_calls.csv')
+fbd1 = fbd[, c(1,2,8)]
+fbd1 = unique(fbd1)
+fbd1 = fbd1[complete.cases(fbd1),]
+fbd1$PNP = 'FBD'
+
+names(data)[1] = paste('Location..Location.ID')
+data4 = left_join(data4, data3, by = c('Location..Location.ID'))
+
+first_call = read.csv('Location Call Log.csv')
+first_call1 = count(first_call, c('Location.ID'))
+first_call1 = left_join(first_call, first_call1, by = c('Location.ID'))
+first_call1 = left_join(first_call1, call, by = c('Project.Name', 'Location.ID'))
+first_call1 = first_call1[first_call1$No.of.Calls== first_call1$freq, ]
+
+first_call2 = first_call1 %>% group_by(Location.ID) %>% slice(which.min(as.Date(Created.Date, '%m/%d/%Y')))
+
+first_call2 = left_join(first_call2, project_deadline, by = "Project.Name")
+
+first_call2 = first_call2[first_call2$Project.End.Date...Deadline != '',]
+
+first_call2$Project.End.Date...Deadline = as.character(first_call2$Project.End.Date...Deadline)
+first_call2$Project.End.Date...Deadline = as.Date(first_call2$Project.End.Date...Deadline , format = "%m/%d/%Y")
+
+first_call2$Created.Date = as.character(first_call2$Created.Date)
+first_call2$Created.Date = as.Date(first_call2$Created.Date , format = "%m/%d/%Y")
+
+first_call2$Diff_days = first_call2$Project.End.Date...Deadline - first_call2$Created.Date
+first_call2$Diff_days = as.numeric(first_call2$Diff_days)
+
+first_call3 = first_call2[, c(1,2,10,14)]
+first_call3 = first_call3[first_call3$Diff_days > 0,]
+
+data5 = data4[,-c(5,6)]
+data5$PNP = ifelse(is.na(data5$PNP), 'Non-FBD', data5$PNP)
+
+names(data5)[1] = paste('Location.ID')
+data6 = left_join(data5, first_call3, by = c('Location.ID'))
+data7 = data6[complete.cases(data6), ]
+
+new_data = read.csv('location_new_wala.csv')
+names(new_data)[1] = paste('Location.ID')
+data8 = left_join(data7, new_data, by = c('Project.Name','Location.ID'))
+
+confirm =  c("Mail Appointment Confirmed", "Fax Appointment Confirmed", "MRT Appointment Confirmed", 'SFTP/Web Portal Confirmed', 'Email Appointment Confirmed', 'Remote Download Scheduled')
+
+first_call4 = first_call1
+first_call4$app = ifelse(first_call4$Call.Outcome %in% confirm, 1, 0)
+
+first_call5 = aggregate(app ~ Location.ID, first_call4, sum)
+
+data = left_join(data, first_call5, by = 'Location.ID')
+
+speciality = read.csv('provider_speciality.csv')
+speciality$Provider.Specialty = toupper(speciality$Provider.Specialty)
+y = unique(speciality$Provider.Specialty)
+y = data.frame(y)
+speciality$loc_type = ifelse(speciality$Provider.Specialty == '', , )
+
+counts <- table(data9[data9$PNP == 'FBD',]$Type)
+barplot(counts, col = 'blue')
+
+xlab = table(data9$X..of.Charts)
+temp2 = data9[data9$PNP == 'FBD',]
+temp2 = aggregate(temp2$X..of.Charts, by=list(Category=temp2$Type), FUN=sum)
+temp2 = temp2[, 2]
+temp2 = as.vector(temp2)
+
+data9$City = toupper(data9$City)
+data9$Type = as.character(data9$Type)
+data9$Type = ifelse(((data9$X..of.Charts.Recovered == 0) & (data9$app == 0)), NA , data9$Type)
+fbd = data9[data9$PNP == 'FBD',]
+
+project_category = read.csv('project_category.csv')
+cat = read_excel('check_project_category.xlsx')
+data10 = left_join(data9, project_category, by = 'Project.Name')
+data10$Project.Category = as.character(data10$Project.Category)
+
+data10$Project.Category = ifelse((grepl('Medicare', data10$Project.Name) == TRUE), 'Medicare', data10$Project.Category)
+data10$Project.Category = ifelse((grepl('AppleCare', data10$Project.Name) == TRUE), 'Medicare', data10$Project.Category)
+
+data10$Project.Category = ifelse(data10$Project.Name == 'BSCA|RADV 2017|MRR|03170659', 'Commercial', data10$Project.Category)
+data10$Project.Category = ifelse(data10$Project.Name == 'Prospect|SPC 2017 Retrieval Only|MRR|03170805', 'Medicare', data10$Project.Category)
+data10$Project.Category = ifelse(data10$Project.Name == 'NAMM CA|PCP 2017|MRR|03170427', 'Medicare', data10$Project.Category)
+data10$Project.Category = ifelse(data10$Project.Name == 'HCP CA|2017 - SPC Chart Audit|MRR|03170820', 'Medicare', data10$Project.Category)
+data10$Project.Category = ifelse(data10$Project.Name == 'UHG|TN ASH Audit 2017|MRR|03171038', 'Medicare', data10$Project.Category)
+data10$Project.Category = ifelse(data10$Project.Name == 'UHG|Non-HEDIS Retrieval Only 2017|MRR|03171166', 'Medicare', data10$Project.Category)
+data10$Project.Category = ifelse(data10$Project.Name == 'WellMed|2017 Retrieval Only|MRR|03171041', 'Medicare', data10$Project.Category)
+data10$Project.Category = ifelse(data10$Project.Category == 'Medicare (MA)', 'Medicare', data10$Project.Category)
+data10$Project.Category = ifelse(data10$Project.Category == 'Commercial (ACA)', 'Commercial', data10$Project.Category)
+data10$Project.Category = ifelse(data10$Project.Name == 'Horizon|IVA 2017|MRR|03170681', 'Commercial', data10$Project.Category)
+data10$Project.Category = ifelse(data10$Project.Name == 'NAMM CA|CA Eye Professionals 2017|MRR|03170791', 'Medicare', data10$Project.Category)
+data10$Project.Category = ifelse(data10$Project.Name == 'VNSNY Choice|Peak|2017 Collect Code|MRR|03171042', 'Medicare', data10$Project.Category)
+data10$Project.Category = ifelse(data10$Project.Name == 'VNSYS Choice|Peak|HEDIS 2017|MRR|03171059', 'Medicare', data10$Project.Category)
+
+traindata = data10[,c(2,4,5,7,8,9,10,11)]
+x = train(factor(PNP) ~ . - City, data = traindata, method = 'glm', family = binomial())
+summary(x)
+traindata$PNP = as.factor(traindata$PNP) 
+smote_data = SMOTE(PNP~.,traindata[,-3], perc.over = 50)
+
+traindata$City = as.factor(traindata$City)
+rose_data = ROSE(PNP ~ ., traindata, seed = 1, p = 0.3)$data
+rose_x = train(factor(PNP) ~ . - City, data = rose_data, method = 'glm', family = binomial())
+
+
+data9[data9$PNP == 'FBD',] %>% group_by(Type) %>%  tally() %>%  ggplot(., aes(x = Type, y = n)) +  geom_bar(stat = "identity") +  geom_text(aes(label = temp2), vjust = -0.5, position = position_dodge(0.9))
+
+ggplot(data9[data9$PNP == 'FBD',], aes(Type)) + geom_bar(fill = 'blue') + xlab('Type of appointment') + ylab('No of Locations') + theme(plot.title = element_text(size=14)) + ggtitle('Mode of Retrieval of FBD Locations')
+
+days_left = data10[data10$PNP == 'FBD',]
+
+days_left1 = days_left[days_left$app == 0,]
+days_left2 = days_left[,c(2,4,7,8,11,12)]
+days_left2$Project.Category = as.factor(days_left2$Project.Category)
+#days_left2$State = as.character(days_left2$State)
+#days_left2$State = as.factor(days_left2$State)
+days_left2$X..of.Charts2 = sqrt(days_left2$X..of.Charts) 
+#days_left2$X..of.Chartslog = log(days_left2$X..of.Charts)
+#days_left2$No.of.Calls2 = sqrt(days_left2$No.of.Calls)
+
+RMSE = function(m, o){
+  sqrt(mean((m - o)^2))
+}
+
+days_left2 = days_left2[(days_left2$Diff_days > 80 & days_left2$Diff_days < 160), ]
+days_left2 = days_left2[days_left2$Diff_days < 160,]
+
+library(caTools)
+set.seed(1000)
+split = sample.split(days_left2$Diff_days, SplitRatio = .8)
+train = subset(days_left2, split == TRUE)
+test  = subset(days_left2, split == FALSE)
+
+ctrl <- trainControl(method = "repeatedcv", repeats = 2, number = 5)
+#prepoc <- preProcess(train, method = c("center","scale"))
+#train <- predict(prepoc, train)
+
+left1 = svm(Diff_days ~ .,data = train, kernel = 'radial', trControl = ctrl)
+y_pred1 = predict(left1, newdata = test)
+
+left2 = train(Diff_days ~ ., data = train, method = 'rf', trControl = ctrl)
+y_pred2 = predict(left2, newdata = test)
+
+left2_rf = randomForest(Diff_days ~ .,  data = train, trControl = ctrl)
+y_pred2_rf = predict(left2_rf, newdata = test)
+
+left3 = train(Diff_days ~ ., data = train, method = 'lm', preProcess = c("center","scale"), trControl = ctrl)
+y_pred3 = predict(left3, newdata = test)
+
+y_pred4 = (y_pred1 + y_pred2_rf)/2
+
+RMSE(test$Diff_days, y_pred4)
+
+days_left3 = days_left2[days_left2$X..of.Charts < 100, ]
+ggplot(days_left3, aes(x = Diff_days, y = X..of.Charts)) + facet_grid(~Type) + geom_point() + geom_smooth() + ylab('No of Charts') + xlab('Days_before_project_deadline') + theme(plot.title = element_text(size=14)) + ggtitle('# of Charts vs Days_left')
+ggplot(days_left3, aes(x = Diff_days, y = No.of.Calls)) + geom_line() + geom_smooth() + xlab('Days before project deadline') + ylab('No of Calls') + theme(plot.title = element_text(size=14)) + ggtitle('# of Calls vs Days_left')
+ggplot(days_left3, aes(x = Diff_days, y = X..of.Charts2)) + geom_line() + geom_smooth() + xlab('Type of appointment') + ylab('No of Locations') + theme(plot.title = element_text(size=14)) + ggtitle('Mode of Retrieval of FBD Locations')
+ggplot(days_left3, aes(x = Diff_days)) + geom_density() + ylab('Proportion') + facet_grid(~Project.Category)
+
+days_left4 = days_left2
+days_left4$Type = as.character(days_left4$Type)
+days_left4$Type = ifelse((days_left4$X..of.Charts <= 10 & days_left4$Type == 'MRT'), 'Fax', days_left4$Type)
+ggplot(days_left4, aes(x = Type,y = X..of.Charts)) + geom_boxplot(fill = 'light blue') + ylab('No of Charts') + xlab('Mode of Retrieval') + theme(plot.title = element_text(size=14)) + ggtitle('# of Charts vs Mode of Retrieval') + scale_y_continuous(limits = c(0,300))
+ggplot(days_left, aes(x = Type,y = Diff_days)) + geom_boxplot(fill = 'light blue') + ylab('# of days left before project deadline') + xlab('Mode of Retrieval') + theme(plot.title = element_text(size=14)) + ggtitle('# of Days left vs Mode of Retrieval') + scale_y_continuous(limits = c(0,300))
+
+
+#median(days_left2[days_left2$Project.Category == 'Medicare', ]$Diff_days)
+#median(days_left2[days_left2$Project.Category == 'Commercial', ]$Diff_days
+
+
+library(rminer)
+
+
+preProcValues <- preProcess(train, method = c("center","scale"))
+library('RANN')
+train_processed <- predict(preProcValues, train)
+train_processed$Loan_Status<-ifelse(train_processed$Loan_Status=='N',0,1)
+
+dmy <- dummyVars(" ~ .", data = train_processed,fullRank = T)
+train_transformed <- data.frame(predict(dmy, newdata = train_processed))
+
+
+
+
+
+library(mlr)
+
+#using one hot encoding 
+labels <- train$Diff_days 
+ts_label <- test$Diff_days
+new_tr <- model.matrix(~.+0,data = train[,-c(4), with = F]) 
+new_ts <- model.matrix(~.+0,data = test[,-c(4), with = F])
+
+#convert factor to numeric 
+labels <- as.numeric(labels)-1
+ts_label <- as.numeric(ts_label)-1
+
+dtrain <- xgb.DMatrix(data = new_tr,label = labels) 
+dtest <- xgb.DMatrix(data = new_ts,label=ts_label)
+
+params <- list(booster = "gbtree", objective = "binary:logistic", eta=0.3, gamma=0, max_depth=6, min_child_weight=1, subsample=1, colsample_bytree=1)
+
+xgbcv <- xgb.cv( params = params, data = dtrain, nrounds = 100, nfold = 5, showsd = T, stratified = T, print.every.n = 10, early.stop.round = 20, maximize = F)
+
+xgb1 <- xgb.train (params = params, data = dtrain, nrounds = 79, watchlist = list(val=dtest,train=dtrain), print.every.n = 10, early.stop.round = 10, maximize = F , eval_metric = "error")
+
+#model prediction
+xgbpred <- predict (xgb1,dtest)
+xgbpred <- ifelse (xgbpred > 0.5,1,0)
+
+
+
+
+xgb <- xgboost(data = data.matrix(train[,-c()]), 
+               label = y, 
+               eta = 0.1,
+               max_depth = 15, 
+               nround=25, 
+               subsample = 0.5,
+               colsample_bytree = 0.5,
+               seed = 1,
+               eval_metric = "merror",
+               objective = "reg:linear",
+               num_class = 12,
+               nthread = 3
+)
+
+
+### Making Original data from raw data 
+
+data = read.csv("Complete_data1.csv")
+new = read.csv("new.csv")
+
+vec = c("BSCA|Commercial 2017|MRR|03170819","Horizon|IVA 2017|MRR|03170681", "Wellmed|PQ Pilot Outreach 2018|MRR|03180303", "Evolent Health|BHN Medicare 2017|MRR|03170546", "BSCA|RADV 2017|MRR|03170659", "Horizon|Medicare 2017|MRR|03170656", "NAMM CA|Specialists Project 2017|MRR|03170667", "Prospect MG|2016 Medicare Wave 3|MRR|03161158", "NAMM CA|PCP 2017|MRR|03170427", "Wellmed|PQ Pilot Outreach 2018|MRR|03180303", "BSCA|RADV 2017|MRR|03170659", "NAMM CA|Hospital 2017|MRR|03170544", "NAMM CA|EPMG SPC 2017|MRR|03171298")
+
+
+data1 = data1 %>% filter(!Project.Name %in%  vec)
+
+x = c(1,2,15,16,5,9,21,17,10,12,6,3, ,19,22,23,11,24,12,13,10,6,25)
+new = new %>% select(x)
+
+x = c(1,2,3,4,5,7,8,9,10,11,12,13,14,6,15,16,17,18,19,20,21,22,23)
+Provider....of.Charts.Recovered = new$Provider..Num.of.Charts.Recovered / new$Provider....of.Charts * 100
+
+phone = read.csv("phone.csv")
+
+Full_data2 = Full_data1
+Full_data2 = unite_(Full_data2, "PZ" ,from = c("Provider..ZIP.Code","Provider..Phone.Number"), sep = "-", remove = FALSE)
+Full_data2 = unite_(Full_data2, "Address" ,from = c("Provider..Address.Line.1", "Provider..Address.Line.2", "Provider..City", "Provider..State"), sep = ",", remove = FALSE)
+Full_data2 = unite_(Full_data2, "Secondary_Address" ,from = c("Provider..Secondary.Address.Line.1", "Provider..Secondary.Address.Line.2", "Provider..Secondary.City", "Provider..Secondary.State"), sep = ",", remove = FALSE)
+Full_data2 = unite_(Full_data2, "Full_Name" ,from = c("Provider..First.Name", "Provider..Last.Name"), sep = " ", remove = FALSE)
+Full_data2 = unite_(Full_data2, "PZ" ,from = c("Provider..ZIP.Code","Provider..Phone.Number"), sep = "-", remove = FALSE)
+
+final_data = Full_data2 %>% select(FP, Provider..Client.Name, Project.Name, Year, Provider..ZIP.Code, Phone.1.Filtered.Text,Full_Name, Address, Location..Location.ID, Provider..Fax.Number, Provider....of.Charts, Provider..Num.of.Charts.Recovered, Provider....of.Charts.Recovered)
+
+write.csv(final_data, "Required_data.csv", row.names = FALSE)
+
+
+unique_location_Phone = final_data %>% group_by(Provider..NPI) %>% summarise(no_of_diff_location_phone = n_distinct(Phone.1.Filtered.Text))
+unique_client = final_data %>% group_by(Provider..NPI) %>% summarise(no_of_unique_client = n_distinct(Provider..Client.Name))
+unique_project = final_data %>% group_by(Provider..NPI) %>% summarise(no_of_unique_project = n_distinct(Project.Name))
+unique_year = final_data %>% group_by(Provider..NPI) %>% summarise(no_of_unique_year = n_distinct(Year))
+
+
+Analysis = left_join(unique_location_Phone,unique_client, by = "Provider..NPI")
+Analysis = left_join(Analysis, unique_project, by = "Provider..NPI")
+Analysis = left_join(Analysis, unique_year, by = "Provider..NPI")
+
+write.csv(Analysis, "Complete_Report.csv")
+
+
+### Matching call with comments
+
+lag = read.csv('FBD with dates.csv')
+
+
+
+s = read.csv('3.csv')
+ss = read.csv('Location Call Log.csv')
+
+s = read.csv('0.csv')
+sss = read.csv('1.csv')
+
+s = s %>% select('Location.ID', 'Project.Name', 'Call.Outcome', 'Call.Category', 'Created.Date', 'PNP.Reason','Comments')
+
+x = bind_rows(ss,s)
+names(sss)[1] = paste("Location.ID")
+x = bind_rows(ss, sss)
+
+write.csv(x, 'Location Call Log.csv', row.names = FALSE)
+
+
+
+
+
+data = data[,1:7]
+s = data %>% group_by(Provider.Full_Name...NPI) %>% summarise(unique_city = n_distinct(City))
+ss = data %>% group_by(Provider.Full_Name...NPI) %>% summarise(unique_state = n_distinct(State))
+
+datax = data %>% left_join(s, by = "Provider.Full_Name...NPI")
+datax = datax %>% left_join(ss, by = "Provider.Full_Name...NPI")
+
+
+datax_2 = datax[datax['unique_city'] == 2,]
+datax_3 = datax[datax['unique_city'] == 3,]
+datax_4 = datax[datax['unique_city'] == 4,]
+datax_5 = datax[datax['unique_city'] == 5,]
+datax_rest = datax[datax['unique_city'] >= 5,]
+
+
+length(unique(datax_2$Provider.Full_Name...NPI))
+length(unique(datax_3$Provider.Full_Name...NPI))
+length(unique(datax_4$Provider.Full_Name...NPI))
+length(unique(datax_5$Provider.Full_Name...NPI))
+length(unique(datax_rest$Provider.Full_Name...NPI))
+
+
+call_comments = read.csv('Location Call Log.csv')
+call_comments = call_comments[1:]
+
+summary = call_comments %>% group_by('Location.ID') %>% summarise(n = count(Location.ID))
+summary = tally(group_by(call_comments, Location.ID))
+summary = summary[-c(1:7),]
+
+no_calls = read.csv('no_of_calls.csv')
+no_calls1 = no_calls[!(no_calls$Num_of_Calls__c == "NULL"), ]
+names(no_calls1)[3] = paste("Location.ID")
+
+summary1 = left_join(summary, no_calls1, by = c("Location.ID"))
+
+summary2 = summary1[summary1$n == summary1$Num_of_Calls__c,]
+summary2 = summary2[!is.na(summary2$Location.ID),]
+
+
+write.csv(summary2, 'matched location ID.csv', row.names = FALSE)
+
+
+### Merging Files
+
+library(data.table) 
+library(plyr)
+
+setwd("C:/Users/intn019/Desktop/Data to copy/Provider Analysis/Downloaded Data/Merge")
+
+files <- list.files(path = "C:/Users/intn019/Desktop/Data to copy/Provider Analysis/Downloaded Data/Merge",pattern = ".csv")
+temp <- lapply(files, fread, sep=",")
+data <- ldply(temp, data.frame)
+
+data = unique(data)
+
+fwrite(data, file = 'Total_data.csv',row.names=FALSE)
+ 
+ 
+ ### Merging New Information
+ 
+ library(dplyr)
+library(tidyr)
+
+data = read.csv('PNP Reason.csv')
+
+data1 = data[,-c(4,5,6,7)]
+
+data = unite_(data, "Address" ,from = c("Location..Address.Line.1", "Location..Address.Line.2", "Location..City", "Location..State"), sep = ",", remove = FALSE)
+data = unite_(data, "Full_Name" ,from = c("First.Name", "Last.Name"), sep = "", remove = TRUE)
+data = unite_(data, "`Provider Full_Name + NPI`" ,from = c("Full_Name", "NPI"), sep = "-", remove = TRUE)
+
+data = unique(data)
+
+final_data = data %>% select(`Provider NPI + Full_Name`, Client.Name, Project.Name, Year, Location..ZIP.Code, Phone.Number, Full_Name, Address, Location..Location.ID, Provider..Fax.Number, Provider....of.Charts, Num.of.Charts.Recovered, X..of.Charts.Recovered)
+
+names(pnr)[1] = paste("Provider Full_Name + NPI")
+names(pnr)[2] = paste("Project Name")
+
+lid = x %>% select(`Provider Full_Name + NPI`,`Project Name`, `Location ID`)
+s = left_join(pnr, lid, by = c("Provider Full_Name + NPI", "Project Name"))
+
+ss = left_join(s, data1, by = c("Provider Full_Name + NPI", "Project Name", "Location ID"))
+
+write.csv(ss,'Project_with_invoices.csv', row.names = FALSE)
+
+
+bar <- ggplot(data, aes(x = PNP.Reason)) + geom_bar(width = 1) 
+
+
+### Provider Analysis
+
+library(dplyr)
+library(tidyr)
+library(data.table) 
+
+setwd("C:/Users/intn019/Desktop/Provider Analysis")
+data = read.csv("Total_data.csv", stringsAsFactors = FALSE)
+
+
+data = data[, -c(1, 17, 27)]
+
+data = unite_(data, "PZ" ,from = c("Provider..ZIP.Code","Provider..Phone.Number"), sep = "-", remove = FALSE)
+data = unite_(data, "Address" ,from = c("Provider..Address.Line.1", "Provider..Address.Line.2", "Provider..City", "Provider..State"), sep = ",", remove = FALSE)
+data = unite_(data, "Secondary_Address" ,from = c("Provider..Secondary.Address.Line.1", "Provider..Secondary.Address.Line.2", "Provider..Secondary.City", "Provider..Secondary.State"), sep = ",", remove = FALSE)
+data = unite_(data, "Full_Name" ,from = c("Provider..First.Name", "Provider..Last.Name"), sep = ",", remove = FALSE)
+
+data$Perc = data$Provider..Num.of.Charts.Recovered / data$Provider....of.Charts * 100
+
+final_data = data %>% select(Provider..NPI, Provider..Client.Name, Project.Name, Year, Provider..ZIP.Code, Provider..Phone.Number,Full_Name, Address, Location..Location.ID, Provider..Fax.Number, Provider....of.Charts, Provider..Num.of.Charts.Recovered, Provider....of.Charts.Recovered)
+final_data = final_data %>% arrange(Provider..NPI)
+final_data = final_data %>% filter(Provider..NPI != "")
+final_data = final_data %>% filter(Provider..NPI != "-3")
+final_data = final_data %>% filter(Provider..NPI != "-3.0")
+final_data = final_data %>% filter(Provider..NPI != ".")
+final_data = final_data %>% filter(Provider..NPI != "0")
+final_data = final_data %>% filter(Provider..NPI != "0.0")
+final_data = final_data %>% filter(Provider..NPI != "`")
+
+final_data1 = final_data
+
+setwd("C:/Users/intn019/Downloads")
+status = read.csv("status.csv", stringsAsFactors = FALSE)
+final_data1 = left_join(final_data1, status, by = "Project.Name")
+final_data = final_data1[,-13]
+
+final_data = unite_(final_data, "PZ" ,from = c("Provider..ZIP.Code", "Provider..Phone.Number"), sep = "-", remove = FALSE)
+final_data$Provider..ZIP.Code = as.numeric(final_data$Provider..ZIP.Code)
+final_data$Provider..Phone.Number = as.numeric(final_data$Provider..Phone.Number)
+
+final_data = final_data %>% filter(Provider..NPI != "0.0")
+final_data = final_data %>% arrange(desc(Provider..NPI))
+
+fwrite(final_data, "C_data.csv", row.names = FALSE)
+
+final_data = unite_(final_data, "FZ" ,from = c("Full_Name", "Provider..NPI"), sep = "-", remove = FALSE)
+
+
+
+x = final_data %>% group_by(Provider..NPI) %>% summarise(no_of_diff_location_address = n_distinct(Full_Name))
+
+unique_location_address = final_data %>% group_by(Provider..NPI) %>% summarise(no_of_diff_location_address = n_distinct(Address))
+unique_location_ZP = final_data %>% group_by(Provider..NPI) %>% summarise(no_of_diff_location_Zip_Phone = n_distinct(PZ))
+unique_location_Zip = final_data %>% group_by(Provider..NPI) %>% summarise(no_of_diff_location_Zip = n_distinct(Provider..ZIP.Code))
+unique_location_Phone = final_data %>% group_by(Provider..NPI) %>% summarise(no_of_diff_location_phone = n_distinct(Provider..Phone.Number))
+unique_client = final_data %>% group_by(Provider..NPI) %>% summarise(no_of_unique_client = n_distinct(Provider..Client.Name))
+unique_project = final_data %>% group_by(Provider..NPI) %>% summarise(no_of_unique_project = n_distinct(Project.Name))
+unique_year = final_data %>% group_by(Provider..NPI) %>% summarise(no_of_unique_year = n_distinct(Year))
+
+
+Analysis = left_join(unique_location_address, unique_location_ZP, by = "Provider..NPI")
+Analysis = left_join(Analysis, unique_location_Zip, by = "Provider..NPI")
+Analysis = left_join(Analysis, unique_location_Phone, by = "Provider..NPI")
+Analysis = left_join(Analysis, unique_client, by = "Provider..NPI")
+Analysis = left_join(Analysis, unique_project, by = "Provider..NPI")
+Analysis = left_join(Analysis, unique_year, by = "Provider..NPI")
+
+c_data = read.csv("Final_data.csv")
+
+x = c_data %>% filter(Provider..Phone.Number == "")
+y = c_data %>% filter(Provider..ZIP.Code == "")
+
+
+Analysis$Provider..NPI = as.integer(Analysis$Provider..NPI)
+Analysis = Analysis %>% filter(Provider..NPI != "NA")
+Analysis = Analysis %>% filter(Provider..NPI != 0)
+
+write.csv(Analysis, "Complete_Report.csv")
+
+
+### Removing NPI
+
+library(dplyr)
+library(tidyr)
+
+data2 = read.csv('Required_data_new1_1.csv')
+
+data2 = data2 %>% filter(FP != ',-')
+write.csv(data2, 'Required_data_new1.csv', row.names = FALSE)
+
+
+molina = data2 %>% filter(Provider..Client.Name == "Molina Healthcare")
+temp = data2 %>% filter(Provider..Client.Name != "Molina Healthcare")
+
+
+temp = temp %>% arrange(Provider..NPI)
+temp = temp %>% filter(Provider..NPI != "")
+temp = temp %>% filter(Provider..NPI != "-3")
+temp = temp %>% filter(Provider..NPI != "-3.0")
+temp = temp %>% filter(Provider..NPI != ".")
+temp = temp %>% filter(Provider..NPI != "0")
+temp = temp %>% filter(Provider..NPI != "0.0")
+temp = temp %>% filter(Provider..NPI != "`")
+temp = temp %>% filter(Provider..NPI != "9999999999")
+temp = temp %>% filter(Provider..NPI != "9999999999.0")
+
+temp$Provider..NPI = as.character(temp$Provider..NPI)
+temp$Provider..NPI = as.numeric(temp$Provider..NPI)
+temp$Provider..NPI = as.character(temp$Provider..NPI)
+
+molina$Provider..NPI = as.character(molina$Provider..NPI)
+molina = molina %>% arrange(Provider..NPI)
+molina = molina %>% filter(Provider..NPI != "")
+molina = molina %>% filter(Provider..NPI != "-3")
+molina = molina %>% filter(Provider..NPI != "-3.0")
+molina = molina %>% filter(Provider..NPI != ".")
+molina = molina %>% filter(Provider..NPI != "0")
+molina = molina %>% filter(Provider..NPI != "0.0")
+molina = molina %>% filter(Provider..NPI != "`")
+molina$Provider..NPI = as.character(molina$Provider..NPI)
+molina$Provider..NPI = as.factor(molina$Provider..NPI)
+
+
+molina1 = molina %>% filter(Project.Name == "Molina|Commercial 2016|MRR|03151039")
+moilna = molina %>% filter(Project.Name != "Molina|Commercial 2016|MRR|03151039")
+molina1$Provider..NPI = as.character(molina1$Provider..NPI)
+molina1$Provider..NPI = as.integer(molina1$Provider..NPI)
+molina1$Provider..NPI = as.factor(molina1$Provider..NPI)
+
+
+molina_new = rbind(moilna, molina1)
+
+molina1 = molina_new %>% filter(Project.Name == "Molina|2016 Marketplace Wisconsin|MRR|03151255")
+molina = molina_new %>% filter(Project.Name != "Molina|2016 Marketplace Wisconsin|MRR|03151255")
+
+
+data2 = bind_rows(temp, molina_new)
+write.csv(data2, 'Required_data_new1.csv', row.names = FALSE)
+
+
+
