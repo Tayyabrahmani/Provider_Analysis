@@ -1,0 +1,2488 @@
+### Analysis Aetna Commercial
+
+
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jul 10 22:27:15 2018
+
+@author: INTN019
+"""
+
+import numpy as np 
+import pandas as pd
+
+pnp = pd.read_csv('ProvData PNP.csv')
+df = pd.read_csv('Updated ProvDB.csv')
+pnp_reason = pd.read_csv('pnp.csv')
+
+df = df.rename(columns = {'Location.ID' : 'Location ID', 'Provider.Full_Name...NPI' : 'Provider Full_Name + NPI', 'Project.Name' : 'Project Name'})
+
+pnp_1 = pnp[((pnp['Project Name'] == "Aetna|Commercial 2017|MRR|03171048") | (pnp['Project Name'] == "Aetna|2016 Commercial|MRR|03160877"))]
+
+pnp_2 = pnp_1.groupby('Provider Full_Name + NPI').filter(lambda x : ((x['Year'] == 2017) & (x['% of Charts Recovered'] == 0)).all())
+
+pnp_2_list = pnp_2['Provider Full_Name + NPI'].unique()
+pnp_2 = pd.DataFrame(pnp_2_list)
+pnp_2.columns = ['Provider Full_Name + NPI']
+
+pnp_3 = pd.merge(pnp_2, df, how = "left", on = ['Provider Full_Name + NPI'])
+pnp_3 = pnp_3.drop_duplicates()
+pnp_4 = pnp_3.groupby('Provider Full_Name + NPI').filter(lambda x : x['Provider Full_Name + NPI'].count() > 1)
+pnp_4 = pnp_4.drop_duplicates()
+
+pnp_reason = pnp_reason.iloc[:,[0,2,3]]
+pnp_reason = pnp_reason.drop_duplicates()
+
+pnp_5 = pd.merge(pnp_4, pnp_reason, how = "left", on = ['Location ID', 'Project Name'])
+pnp_5 = pnp_5.drop_duplicates()
+pnp_6 = pnp_5
+pnp_6= pnp_6[~pd.isna(pnp_6['Address'])]
+
+pnp_6['City'] = pnp_6['Address'].astype(str).map(lambda x: x.split(',')[-2])
+pnp_6['State'] = pnp_6['Address'].astype(str).map(lambda x: x.split(',')[-1])
+
+pnp_6['City'] = pnp_6['City'].str.upper()
+pnp_6['State'] = pnp_6['State'].str.upper()
+
+pnp_7 = pnp_6.groupby('Provider Full_Name + NPI')['Year'].nunique()
+pnp_7 = pd.DataFrame(pnp_7)
+pnp_7 = pnp_7[pnp_7['Year'] > 1]
+pnp_8 = pnp_7.index
+pnp_8 = list(pnp_8)
+pnp_8 = pd.DataFrame(pnp_8)
+pnp_8 = pnp_8.drop_duplicates()
+pnp_8.columns = ['Provider Full_Name + NPI']
+pnp_9 = pnp_6[pnp_6['Provider Full_Name + NPI'].isin(pnp_8)]
+
+pnp_9 = pd.merge(pnp_8, pnp_6, how = "left", on = 'Provider Full_Name + NPI')
+
+pnp_10 = pnp_9.groupby('Provider Full_Name + NPI')['City'].nunique()
+pnp_10 = pd.DataFrame(pnp_10)
+pnp_10 = pnp_10[pnp_10['City'] > 1]
+pnp_12 = pnp_10.index
+pnp_12 = list(pnp_12)
+pnp_12 = pd.DataFrame(pnp_12)
+pnp_12 = pnp_12.drop_duplicates()
+pnp_12.columns = ['Provider Full_Name + NPI']
+
+pnp_14 = pd.merge(pnp_12, pnp_6, how = "left", on = 'Provider Full_Name + NPI')
+
+
+### Checking for specific callback time
+
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jul 19 11:48:42 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+
+call_log = pd.read_csv('Location Call Log.csv')
+nrp = pd.read_csv('new_nrp.csv')
+df = pd.read_csv('Updated ProvDB.csv')
+Valid_PNP = pd.read_csv('Valid_PNP.csv')
+
+nrp = nrp[nrp['PNP.Reason'] == 'Non Responsive Provider (NRP)']
+nrp = nrp['Location.ID'].unique()
+nrp = pd.DataFrame(nrp)                     
+nrp.columns = ['Location.ID']
+nrp = pd.merge(nrp, call_log, how = 'left', on = 'Location.ID')
+nrp = nrp[~pd.isna(nrp['Project.Name'])]
+
+nrp_callback = nrp[nrp['Call.Outcome'] == 'Specific Call Back Time']
+nrp_callback = nrp_callback['Location.ID'].unique()
+nrp_callback = pd.DataFrame(nrp_callback)                     
+nrp_callback.columns = ['Location ID']
+nrp_callback = pd.merge(nrp_callback, Valid_PNP, how = 'left', on = 'Location ID')
+nrp_callback = nrp_callback[nrp_callback['% of Charts Recovered'] == 0]
+nrp_callback = nrp_callback.drop_duplicates()
+
+nrp_callback = nrp_callback.rename(columns = {'Location.ID' : 'Location ID', 'Provider.Full_Name...NPI' : 'Provider Full_Name + NPI', 'Project.Name' : 'Project Name', 'X..of.Charts.Recovered' : 'Num of Charts Recovered', 'X..of.Charts' : '# of Charts','X..of.Charts.Recovered.1' : '% of Charts Recovered'})
+
+nrp_callback['Percent_max'] = nrp_callback.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('max')
+nrp_callback['Percent_min'] = nrp_callback.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('min')
+
+nrp_callback1 = nrp_callback.groupby(['Provider Full_Name + NPI','Project Name', 'Location ID']).agg({'Num of Charts Recovered' : sum, '# of Charts' : sum})
+nrp_callback1 = nrp_callback1[~pd.isna(nrp_callback1['Provider Full_Name + NPI'])]
+
+temp1 = pd.merge(nrp_callback, nrp_callback1, how = 'left', on = ['Provider Full_Name + NPI', 'Location ID'])                         
+
+del temp1['# of Charts_x']
+del temp1['Num of Charts Recovered_x']
+del temp1['% of Charts Recovered']
+
+temp1['% of Charts Recovered'] = temp1['Num of Charts Recovered_y']/temp1['# of Charts_y'] *100
+
+nrp_callback1 = temp1
+nrp_callback1 = nrp_callback1.rename(columns = {'Num of Charts Recovered_y' : 'Num of Charts Recovered', '# of Charts_y' : '# of Charts'})
+nrp_callback1 = nrp_callback1.drop_duplicates(["Provider Full_Name + NPI","Project Name", "Location ID"])
+nrp_callback1 = nrp_callback1[~(pd.isna(nrp_callback1['PNP.Reason']))]
+nrp_callback1 = nrp_callback1[nrp_callback1['PNP.Reason'] == 'Non Responsive Provider (NRP)']
+
+call_backtime = re.search(r'd{1} + \d{2}-\d{2}', nrp_callback[''])
+
+
+### Checking Phone Number
+
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jul  9 13:31:19 2018
+
+@author: INTN019
+"""
+
+import numpy as np 
+import pandas as pd
+
+df = pd.read_csv('Updated ProvDB.csv')
+NRP_location = pd.read_csv('NRP_location.csv')
+loc_dict = pd.read_csv('location_with_phone_number_dict.csv')
+
+df = df.rename(columns = {'Location.ID' : 'Location ID'})
+df = df.rename(columns = {'Primary.Phone.No' : 'Primary Phone No'})
+df = df.rename(columns = {'Secondary.Phone.No' : 'Secondary Phone No'})
+
+NRP_df = pd.merge(NRP_location, df, how = 'left', on = 'Location ID')
+
+NRP_df = NRP_df.rename(columns = {'Primary.Phone.No' : 'Primary Phone No'})
+NRP_df = NRP_df.rename(columns = {'Secondary.Phone.No' : 'Secondary Phone No'})
+
+NRP_list = loc_dict['Location ID'].unique()
+NRP_list1 = NRP_list[0:10]
+
+list1 = []
+dict1 = {}
+
+for loc in NRP_list1:
+    temp = df[df['Location ID'] == loc]
+    al = list(temp[~pd.isna(temp['Primary Phone No'])]['Primary Phone No'])
+    al1 = list(temp[~pd.isna(temp['Secondary Phone No'])]['Secondary Phone No'])
+    al = al + al1
+    al = list(set(al))
+    temp2 = list(loc_dict[loc_dict['Location ID'] == loc]['Phone Number'])
+    list1 = [i for i in temp2 if i not in al]
+    list1 = list1[0].split(',')
+    prov_key = list(temp[])
+    list1 = [i for i in list1 if i not in prov_key]    
+    dict1[loc] = list1
+
+di = pd.DataFrame(list(dict1.items()), columns=['Location ID', 'Phone Number'])
+di['Phone Number'] = di['Phone Number'].apply(lambda x: list(x))
+di['Phone Number'] = di['Phone Number'].str.split(',')
+di['Phone Number'] = di['Phone Number'].str.lstrip(',')
+
+di.to_csv('NRP_unnamed_location.csv', index = False)
+
+loc_dict['Phone Number'] = loc_dict['Phone Number'].astype(str).str.replace(r'\b(\w+)(\s+\1)+\b', r'\1')
+
+from collections import OrderedDict
+loc_dict['Phone Number'] = loc_dict['Phone Number'].str.split().apply(lambda x: OrderedDict.fromkeys(x).keys()).str.join(' ')
+
+
+
+#Classifying FBD cases
+
+
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jul 18 20:23:04 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+
+nrp_fbd = pd.read_csv('Location Call Log.csv')
+fbd_with_dates = pd.read_csv('FBD with dates.csv')
+nrp_fbd = nrp_fbd.drop_duplicates()
+nrp_fbd = nrp_fbd.rename(columns = {'Location..Location ID' : 'Location.ID'})
+
+fbd = fbd_with_dates['Location.ID'].unique()
+fbd = pd.DataFrame(fbd)
+fbd.columns = ['Location.ID']
+fbd = pd.merge(fbd, nrp_fbd, how = 'left', on = 'Location.ID')
+
+fbd_nrp = fbd[fbd['PNP.Reason'] == 'Non Responsive Provider (NRP)']
+fbd_nrp = fbd_nrp['Location.ID'].unique()
+fbd_nrp = pd.DataFrame(fbd_nrp)
+fbd_nrp.columns = ['Location.ID']
+fbd_nrp = fbd_nrp['Location.ID'].tolist()
+fbd_nrp1 = fbd[np.logical_not(fbd["Location.ID"].isin(fbd_nrp))]
+
+see = pd.merge(x, df, how = 'left', on = 'Location.ID')
+see = see[see['X..of.Charts.Recovered.1'] == 0]
+
+fbd1 = fbd[fbd['Call.Category'] == 'Scheduled']
+fbd1 = fbd1['Location.ID'].unique()
+fbd1 = pd.DataFrame(fbd1)
+fbd1.columns = ['Location.ID']
+fbd1 = fbd1['Location.ID'].tolist()
+
+fbd2 = fbd['Location.ID'].unique()
+fbd2 = pd.DataFrame(fbd2)
+fbd2.columns = ['Location.ID']
+fbd2 = fbd2[np.logical_not(fbd2["Location.ID"].isin(fbd1))]
+
+fbd_schedule = see['Location.ID'].unique()
+fbd_schedule = pd.DataFrame(fbd_schedule)
+fbd_schedule.columns = ['Location.ID']
+
+fbd_schedule = pd.merge(fbd_schedule, nrp_fbd, how = 'left', on = 'Location.ID')
+
+fbd_schedule_ext = fbd_schedule[fbd_schedule['Call.Outcome'] == 'Extension/Reschedule of Appointment']
+fbd_schedule_ext = fbd_schedule_ext['Location.ID'].unique()
+fbd_schedule_ext = pd.DataFrame(fbd_schedule_ext)
+fbd_schedule_ext.columns = ['Location.ID']
+
+fbd_schedule_ext = pd.merge(fbd_schedule_ext, df, how = 'left', on = 'Location.ID')
+
+fbd_schedule_ext = fbd_schedule_ext[~pd.isna(fbd_schedule_ext['Project.Name'])]
+fbd_schedule_ext = fbd_schedule_ext[fbd_schedule_ext['X..of.Charts.Recovered.1'] == 0]
+
+
+### Classifying 
+
+
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jul  2 17:31:56 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+
+df = pd.read_csv('Updated ProvDB.csv')
+workflow = pd.read_csv('workflow status.csv')
+pnp = pd.read_csv('pnp.csv')
+
+#df = df.rename(columns = {'Location.ID' : 'Location ID'})
+#df = df.rename(columns = {'Project.Name' : 'Project Name'})
+#df = df.rename(columns = {'Provider.Full_Name...NPI' : 'Provider Full_Name + NPI'})
+#workflow = workflow.rename(columns = {'Location: Location ID' : 'Location ID'})
+
+df['Percent_max'] = df.groupby(['Provider Full_Name + NPI'])['X..of.Charts.Recovered.1'].transform('max')
+df['Percent_min'] = df.groupby(['Provider Full_Name + NPI'])['X..of.Charts.Recovered.1'].transform('min')
+
+df2 = df.groupby(['Provider Full_Name + NPI']).filter(lambda x: ((x.Percent_max > 0) & (x.Percent_min < 100)).all())
+df2 = df2.groupby('Provider Full_Name + NPI').filter(lambda x: len(x) > 1)
+
+df3 = pd.merge(df2, workflow, how = 'left', on = ['Project Name','Location ID'])
+df4 = pd.merge(df3, pnp, how = 'left', on = ['Provider Full_Name + NPI', 'Project Name','Location ID'])
+
+df4.to_csv('ss.csv', index = False)
+
+df4['PNP'] = np.where(((df4['Workflow Status'] == "PNP") & (df4['% of Charts Recovered'] == 0)), 'Valid', 'Non-Valid')
+
+PNP = df4[df4['PNP'] == "Valid"]
+Non_PNP = df4[~(df4['PNP'] == "Valid")]
+Schedule = Non_PNP[~(Non_PNP['Appointment.Status'] == "None Scheduled")]
+Non_Schedule = Non_PNP[Non_PNP['Appointment.Status'] == "None Scheduled"]
+
+#Non_PNP.to_csv('Non_PNP.csv', index = False)
+#Schedule.to_csv('Schedule.csv', index = False)
+#Non_Schedule.to_csv('Non_Schedule.csv', index = False)
+#df2 = df2.rename(columns = {'Location: Location ID' : 'Location ID'})
+#df2 = df2.rename(columns = {'Location: Location ID' : 'Location ID'})
+   
+
+### Comparing Project Wise
+
+
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Jul 15 11:12:40 2018
+
+@author: INTN019
+"""
+
+Aetna Commercial, The Health Plan, 
+Aetna Commercial, WellMed Medical Management Inc
+Aetna Commercial, North American Medical Management (NAMM)
+Aetna Commercial, Prospect Medical Group
+Aetna Commercial, Blue Shield of California
+Aetna Commercial, Evolent Health
+Aetna Commercial, North Texas Specialty Physicians
+Blue Shield of California, Prospect Medical Group
+The Health Plan, Humana
+
+import numpy as np
+import pandas as pd
+
+df = pd.read_csv('Updated ProvDB.csv')
+df1 = df[df['Year'] == 2017]
+prov_list1 = df1
+
+prov_list1 = prov_list1.rename(columns = {'Location.ID' : 'Location ID', 'Provider.Full_Name...NPI' : 'Provider Full_Name + NPI', 'Project.Name' : 'Project Name', 'Client.Name' : 'Client Name'})
+prov_list1 = prov_list1.groupby('Provider Full_Name + NPI').filter(lambda x: x['Client Name'].nunique() > 1)
+
+prov_list2 = prov_list1[prov_list1['X..of.Charts.Recovered.1'] == 100]
+prov_list3 = prov_list1[prov_list1['X..of.Charts.Recovered.1'] == 0]
+
+prov_list1 = pd.concat([prov_list2,prov_list3])
+prov_list1 = prov_list1.groupby('Provider Full_Name + NPI').filter(lambda x: len(x) > 1)
+prov_list1 = prov_list1.groupby('Provider Full_Name + NPI').filter(lambda x: x['X..of.Charts.Recovered.1'] )
+prov_list1['Percent_max'] = prov_list1.groupby(['Provider Full_Name + NPI'])['X..of.Charts.Recovered.1'].transform('max')
+prov_list1['Percent_min'] = prov_list1.groupby(['Provider Full_Name + NPI'])['X..of.Charts.Recovered.1'].transform('min')
+prov_list1 = prov_list1.groupby(['Provider Full_Name + NPI']).filter(lambda x: ((x.Percent_max == 100) & (x.Percent_min == 0)).all())
+prov_list1 = prov_list1.groupby('Provider Full_Name + NPI').filter(lambda x: x['Client Name'].nunique() > 1)
+
+
+# For the year 2017
+ah = prov_list1.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'The Health Plan')).all())
+
+ah1 = ah[ah['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+ah2 = ah[ah['Client Name'] == 'The Health Plan']['% of Charts Recovered'].mean()
+
+aw = prov_list1.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'WellMed Medical Management Inc')).all())
+
+aw1 = aw[aw['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+aw2 = aw[aw['Client Name'] == 'WellMed Medical Management Inc']['% of Charts Recovered'].mean()
+
+an = prov_list1.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'North American Medical Management (NAMM)')).all())
+
+an1 = an[an['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+an2 = an[an['Client Name'] == 'North American Medical Management (NAMM)']['% of Charts Recovered'].mean()
+
+ap = prov_list1.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'Prospect Medical Group')).all())
+
+ap1 = ap[ap['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+ap2 = ap[ap['Client Name'] == 'Prospect Medical Group']['% of Charts Recovered'].mean()
+
+ab = prov_list1.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'Blue Shield of California')).all())
+
+ab1 = ab[ab['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+ab2 = ab[ab['Client Name'] == 'Blue Shield of California']['% of Charts Recovered'].mean()
+
+ae = prov_list1.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'Evolent Health')).all())
+
+ae1 = ae[ae['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+ae2 = ae[ae['Client Name'] == 'Evolent Health']['% of Charts Recovered'].mean()
+
+at = prov_list1.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'North Texas Specialty Physicians')).all())
+
+at1 = at[at['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+at2 = at[at['Client Name'] == 'North Texas Specialty Physicians']['% of Charts Recovered'].mean()
+
+
+#For the year 2016
+
+ah = prov_list2.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'The Health Plan')).all())
+
+ah1 = ah[ah['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+ah2 = ah[ah['Client Name'] == 'The Health Plan']['% of Charts Recovered'].mean()
+
+aw = prov_list2.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'WellMed Medical Management Inc')).all())
+
+aw1 = aw[aw['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+aw2 = aw[aw['Client Name'] == 'WellMed Medical Management Inc']['% of Charts Recovered'].mean()
+
+an = prov_list2.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'North American Medical Management (NAMM)')).all())
+
+an1 = an[an['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+an2 = an[an['Client Name'] == 'North American Medical Management (NAMM)']['% of Charts Recovered'].mean()
+
+ap = prov_list2.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'Prospect Medical Group')).all())
+
+ap1 = ap[ap['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+ap2 = ap[ap['Client Name'] == 'Prospect Medical Group']['% of Charts Recovered'].mean()
+
+ab = prov_list2.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'Blue Shield of California')).all())
+
+ab1 = ab[ab['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+ab2 = ab[ab['Client Name'] == 'Blue Shield of California']['% of Charts Recovered'].mean()
+
+ae = prov_list2.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'Evolent Health')).all())
+
+ae1 = ae[ae['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+ae2 = ae[ae['Client Name'] == 'Evolent Health']['% of Charts Recovered'].mean()
+
+at = prov_list2.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'North Texas Specialty Physicians')).all())
+
+at1 = at[at['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+at2 = at[at['Client Name'] == 'North Texas Specialty Physicians']['% of Charts Recovered'].mean()
+
+am = prov_list2.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'Molina Healthcare')).all())
+
+am1 = am[am['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+am2 = am[am['Client Name'] == 'Molina Healthcare']['% of Charts Recovered'].mean()
+
+aa = prov_list2.groupby('Provider Full_Name + NPI').filter(lambda x: ((x['Client Name'] == 'Aetna Commercial') | (x['Client Name'] == 'AppleCare Medical Group')).all())
+
+aa1 = aa[aa['Client Name'] == 'Aetna Commercial']['% of Charts Recovered'].mean()
+aa2 = aa[aa['Client Name'] == 'AppleCare Medical Group']['% of Charts Recovered'].mean()
+
+
+
+aww = aw.groupby('Provider Full_Name + NPI').filter(lambda x : (x['Client Name'] == 'Aetna Commercial').all())
+aww = aw[aw['Client Name'] == 'Aetna Commercial']
+aww = aww[aww['X..of.Charts.Recovered.1'] == 100]
+
+aww1 = aw[aw['Client Name'] == 'WellMed Medical Management Inc']
+aww2 = aww1[aww1['X..of.Charts.Recovered.1'] ==  0]
+
+aww_list = aww2['Provider Full_Name + NPI'].unique()
+aww_list = pd.DataFrame(aww_list)
+aww_list.columns = ['Provider Full_Name + NPI']
+
+aww_1 = pd.concat([aww, aww2])
+aww_1 = aww_1.drop_duplicates()
+aww_1 = aww_1.groupby('Provider Full_Name + NPI').filter(lambda x : len(x) > 1)
+
+
+### Correcting City Names
+
+
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Jul  1 12:19:57 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+import re, math
+from collections import Counter
+
+df = pd.read_csv('ProvDB.csv')
+
+df1 = df.iloc[:,[2,6,10,14]]
+
+Project_list = list(df1['Project Name'].unique())
+dict1 = {}
+Word = re.compile(r'\w+')
+
+def word2vec(word):
+    from collections import Counter
+    from math import sqrt
+
+    # count the characters in word
+    cw = Counter(word)
+    # precomputes a set of the different characters
+    sw = set(cw)
+    # precomputes the "length" of the word vector
+    lw = sqrt(sum(c*c for c in cw.values()))
+
+    # return a tuple
+    return cw, sw, lw
+
+def cosdis(v1, v2):
+    # which characters are common to the two words?
+    common = v1[1].intersection(v2[1])
+    # by definition of cosine distance we have
+    return sum(v1[0][ch]*v2[0][ch] for ch in common)/v1[2]/v2[2]
+
+
+for p in Project_list:
+    temp = df1[df1['Project Name'] == p]
+    l1 = list(temp[~(pd.isna(temp['Location Identifier_y']))]['Location Identifier_y'].unique())
+    for l in l1:
+        temp1 = temp[temp['Location Identifier_y'] == l]
+        l2 = list(temp1[~(pd.isna(temp1['Location ID']))]['Location ID'].unique())
+        for i in range(0, len(l2)):
+            for j in range(0,len(l2)):
+                if(~(pd.isna(temp1.iloc[i]['Address'] and temp1.iloc[j]['Address']))):    
+                    vec1 = text_to_vector(temp1.iloc[i]['Address'])
+                    vec2 = text_to_vector(temp1.iloc[j]['Address'])
+                    dict1[temp1.iloc[i]['Address'],temp1.iloc[j]['Address']] = get_cosine(vec1,vec2)
+                else:
+                    pass
+                        
+for p in Project_list:
+    temp = df1[df1['Project Name'] == 'BSCA|HMO RADV 2017|MRR|03170678']
+    l1 = list(temp[~(pd.isna(temp['Location Identifier_y']))]['Location Identifier_y'].unique())
+    for l in l1:
+        temp1 = temp[temp['Location Identifier_y'] == l]
+        l2 = list(temp1[~(pd.isna(temp1['Location ID']))]['Location ID'].unique())
+        for i in range(0, len(l2)):
+            for j in range(0, len(l2)):
+                vec1 = text_to_vector(temp1.iloc[i]['Address'])
+                vec2 = text_to_vector(temp1.iloc[j]['Address'])
+                dict1[temp1.iloc[i]['Address'], temp1.iloc[j]['Address']] = get_cosine(vec1,vec2)
+
+
+vec1 = text_to_vector(temp1.iloc[1]['Address'])
+count = 0
+vec2 = text_to_vector(temp1.iloc[2]['Address'])
+dict1[temp1.iloc[1]['Address'], temp1.iloc[2]['Address']] = get_cosine(vec1,vec2)
+
+
+temp = y.iloc[24,:]['City']
+temp1 = y.iloc[25,:]['City']
+
+vec1 = text_to_vector(temp.loc['City'])
+vec2 = text_to_vector(temp1.loc['City'])
+x = get_cosine(vec1,vec2)
+
+import nltk
+nltk.edit_distance("Scottsdale", "Csottsdale")
+
+from nltk.corpus import wordnet
+
+wordFromList1 = wordnet.synsets(temp)
+wordFromList2 = wordnet.synsets(temp1)
+s = wordFromList1.wup_similarity(wordFromList2)
+
+
+
+
+va = word2vec(temp)
+vb = word2vec(temp1)
+
+cosdis(va,vb)
+
+
+### Extracting City and State
+
+
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jul  5 12:49:08 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+
+df = pd.read_csv('no_of_address_of_provider.csv')
+
+df['Address'] = df['Address'].astype(str).map(lambda x: x.lstrip(','))
+df['City'] = df['City'].str.upper()
+
+
+temp3 = temp3[~(temp3['Year'] == 2015)]
+temp3 = temp3[~(temp3['Year'] == 2018)]
+
+temp1 = temp[~(pd.isna(temp['Address']))]
+temp2 = temp[pd.isna(temp['Address'])]
+
+temp1['City'] = temp1['Address'].astype(str).map(lambda x: x.split(',')[-2:-1])
+temp1['City'] = temp1['City'].apply(','.join)
+temp1['State'] = temp1['Address'].astype(str).map(lambda x: x.split(',')[-1])
+
+temp3 = pd.concat([temp1, temp2])
+
+temp2 = temp1.groupby('Provider.Full_Name...NPI')['City'].nunique()
+temp2 = pd.DataFrame(temp2)
+temp3 = pd.merge(df, temp2, on = ['Provider.Full_Name...NPI'])
+city1 = temp3[temp3['City_y'] == 1]
+city2 = temp3[temp3['City_y'] == 2]
+city3 = temp3[temp3['City_y'] == 3]
+city4 = temp3[temp3['City_y'] == 4]
+city5 = temp3[temp3['City_y'] >= 5]
+
+(city1['X..of.Charts'] - city1['X..of.Charts.Recovered']).mean()
+(city2['X..of.Charts'] - city2['X..of.Charts.Recovered']).mean()
+(city3['X..of.Charts'] - city3['X..of.Charts.Recovered']).mean()
+(city4['X..of.Charts'] - city4['X..of.Charts.Recovered']).mean()
+(city5['X..of.Charts'] - city5['X..of.Charts.Recovered']).mean()
+
+df.to_csv('no_of_address_of_provider.csv',index = False)
+
+
+### Fax_MRT_mail_reschedule 
+
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jul 23 14:16:10 2018
+
+@author: INTN019
+"""
+
+fbd = pd.read_csv('FBD_with_diffdays.csv')
+
+fbd1 = fbd['Location.ID'].unique()
+call_log = pd.read_csv('Location Call Log.csv')
+
+fbd_schedule_ext = fbd[fbd['Call.Outcome'] == 'Extension/Reschedule of Appointment']
+fbd_schedule_ext_provlist = fbd_schedule_ext['Location.ID'].unique()
+fbd_schedule_ext_provlist = pd.DataFrame(fbd_schedule_ext_provlist)
+fbd_schedule_ext_provlist.columns = ['Location.ID']
+fbd_schedule_ext = pd.merge(fbd_schedule_ext_provlist, call_log, how = 'left', on = 'Location.ID')
+fbd_schedule_ext = fbd_schedule_ext.drop_duplicates()
+
+fbd_MRT1 = fbd_schedule_ext[fbd_schedule_ext['Call.Outcome'] == 'MRT Appointment Confirmed']
+fbd_fax = fbd_schedule_ext[fbd_schedule_ext['Call.Outcome'] == 'Fax Appointment Confirmed']
+fbd_mail = fbd_schedule_ext[fbd_schedule_ext['Call.Outcome'] == 'Mail Appointment Confirmed']
+
+fbd_MRT1 = fbd_MRT1['Location.ID'].unique()
+fbd_MRT1 = pd.DataFrame(fbd_MRT1)
+fbd_MRT1.columns = ['Location ID']
+fbd_MRT1_prov = pd.merge(fbd_MRT1, df, how = 'left', on = 'Location ID')
+fbd_MRT1_prov = fbd_MRT1_prov[~pd.isna(fbd_MRT1_prov['Provider Full_Name + NPI'])]
+
+fbd_fax = fbd_fax['Location.ID'].unique()
+fbd_fax = pd.DataFrame(fbd_fax)
+fbd_fax.columns = ['Location ID']
+fbd_fax_prov = pd.merge(fbd_fax, df, how = 'left', on = 'Location ID')
+fbd_fax_prov = fbd_fax_prov[~pd.isna(fbd_fax_prov['Provider Full_Name + NPI'])]
+
+fbd_mail = fbd_mail['Location.ID'].unique()
+fbd_mail = pd.DataFrame(fbd_mail)
+fbd_mail.columns = ['Location ID']
+fbd_mail_prov = pd.merge(fbd_mail, df, how = 'left', on = 'Location ID')
+fbd_mail_prov = fbd_mail_prov[~pd.isna(fbd_mail_prov['Provider Full_Name + NPI'])]
+
+
+checkfbd_MRT1 = fbd_MRT1.isin(fbd_fax)
+
+
+call = pd.read_csv('No_of_calls.csv')
+call = call.rename(columns = {'Num_of_Calls__c' : 'No of Calls', 'Project_Name__c' : 'Project Name', 'Name' : 'Location ID'})
+Ext = pd.merge(Ext, call, how = 'left', on = ['Location ID', 'Project Name'])
+
+fbd_schedule_ext_provlist = fbd_schedule_ext_provlist.rename(columns = {'Location.ID' : 'Location ID'})
+fbd_schedule_ext = pd.merge(fbd_schedule_ext_provlist, df, how = 'left', on = 'Location ID')
+
+fbd_schedule_ext = fbd_schedule_ext[(fbd_schedule_ext['% of Charts Recovered'] < 100) & (fbd_schedule_ext['% of Charts Recovered'] > 0)]
+
+
+### Finding common NRP and FBD cases
+
+
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jul 17 11:47:14 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+
+nrp_fbd = pd.read_csv('Location Call Log.csv')
+fbd = pd.read_csv('FBD with dates.csv')
+nrp_fbd = nrp_fbd.drop_duplicates()
+nrp_fbd = nrp_fbd.rename(columns = {'Location: Location ID' : 'Location.ID'})
+
+fbd = fbd[fbd['PNP.Reason'] == 'First Appointment Beyond Due Date (FBD)']
+fbd = fbd['Location.ID'].unique()
+fbd = pd.DataFrame(fbd)
+fbd.columns = ['Location.ID']
+fbd = pd.merge(fbd, nrp_fbd, how = 'left', on = 'Location.ID')
+
+fbd1 = fbd[fbd['Call.Category'] == 'Scheduled']
+fbd1 = fbd1['Location.ID'].unique()
+fbd1 = pd.DataFrame(fbd1)
+fbd1.columns = ['Location.ID']
+fbd1 = fbd1['Location.ID'].tolist()
+
+fbd2 = fbd['Location.ID'].unique()
+fbd2 = pd.DataFrame(fbd2)
+fbd2.columns = ['Location.ID']
+fbd2 = fbd2[np.logical_not(fbd2["Location.ID"].isin(fbd1))]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+pre_pnp = pd.read_csv('Pre_PNP.csv')
+
+pre_pnp = pre_pnp.rename(columns = {'Location: Location ID' : 'Location ID'})
+pre_pnp = pre_pnp.drop_duplicates()
+pre_pnp1 = pd.merge(Valid_PNP, pre_pnp, how = 'left', on = 'Location ID')
+
+
+fbd1 = fbd[fbd['# of Charts'] > 100]
+
+
+### Finding providers in two or more projects in same year
+
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jul 12 18:28:51 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+
+df = pd.read_csv('Original ProviderDB.csv')
+
+df2 = df.groupby(['Provider Full_Name + NPI']).filter(lambda x: x['Client Name'].nunique() > 1)
+
+df2_2016 = df2[df2['Year'] == 2016]
+df3_2016 = df2_2016.groupby(['Provider Full_Name + NPI']).filter(lambda x: x['Client Name'].nunique() > 1)
+
+df2_2017 = df2[df2['Year'] == 2017]
+df3_2017 = df2_2017.groupby(['Provider Full_Name + NPI']).filter(lambda x: x['Client Name'].nunique() > 1)
+
+temp = df3_2016.groupby(['Provider Full_Name + NPI', 'Client Name']).agg({'# of Charts': sum, '# of Charts Recovered' : sum})
+temp['Provider Full_Name + NPI + Client Name'] = temp.index
+temp['Provider Full_Name + NPI'] = temp['Provider Full_Name + NPI + Client Name'].astype(str).apply(lambda x : x.split(',')[0])
+temp['Client Name'] = temp['Provider Full_Name + NPI + Client Name'].astype(str).apply(lambda x : x.split(',')[1])
+temp['Provider Full_Name + NPI'] = temp['Provider Full_Name + NPI'].astype(str).apply(lambda x : x.lstrip("('").rstrip("'"))
+temp['Client Name'] = temp['Client Name'].astype(str).apply(lambda x : x.lstrip(" '").rstrip("')"))
+
+del temp['Provider Full_Name + NPI + Client Name']
+temp = temp.reset_index(drop = True)
+temp['% of Charts Recovered'] = temp['# of Charts Recovered']/temp['# of Charts'] * 100
+temp['Percent_max'] = temp.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('max')
+temp['Percent_min'] = temp.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('min')
+
+#temp = aetna_2017.groupby(['Provider Full_Name + NPI', 'Location ID']).agg({'Num of Charts Recovered' : sum, '# of Charts' : sum})
+#temp1 = pd.merge(aetna_2017, temp, how = 'left', on = ['Provider Full_Name + NPI', 'Location ID'])                         
+
+#del temp1['# of Charts_x']
+#del temp1['Num of Charts Recovered_x']
+#del temp1['% of Charts Recovered']
+#temp1['% of Charts Recovered'] = temp1['Num of Charts Recovered_y']/temp1['# of Charts_y'] *100
+#aetna_2017 = temp1
+#aetna_2017 = aetna_2017.rename(columns = {'Num of Charts Recovered_y' : 'Num of Charts Recovered', '# of Charts_y' : '# of Charts'})
+#aetna_2017 = aetna_2017.drop_duplicates(["Provider Full_Name + NPI", "Location ID"])
+
+
+
+
+temp = temp.groupby(['Provider Full_Name + NPI', 'Client Name']).filter(lambda x: ((x.Percent_min < 100) & (x.Percent_max > 0)).all())
+
+
+temp['Most Successful'] = temp.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('max')
+
+temp1 = temp[temp['Most Successful'] == temp['% of Charts Recovered']]
+temp1 = temp1[temp1['Most Successful'] != 0]
+
+temp2 = temp1.groupby(['Provider Full_Name + NPI']).filter(lambda x: x['Client Name'].nunique() > 1 )
+temp3 = temp1.groupby(['Provider Full_Name + NPI']).filter(lambda x: x['Client Name'].nunique() == 1 )
+temp3 = temp3.drop_duplicates(["Provider Full_Name + NPI", "Client Name"])
+
+temp2['Highest Charts Recovered'] = temp2.groupby(['Provider Full_Name + NPI'])['# of Charts Recovered'].transform('max')
+temp4 = temp2[temp2['Highest Charts Recovered'] == temp2['# of Charts Recovered']]
+
+temp5 = temp4              
+temp5['Highest Charts'] = temp4.groupby(['Provider Full_Name + NPI'])['# of Charts'].transform('max')
+temp6 = temp4[temp4['Highest Charts'] == temp4['# of Charts']]
+temp7 = temp6.groupby(['Provider Full_Name + NPI']).filter(lambda x: x['Client Name'].nunique() == 1)
+temp7 = temp7.drop_duplicates(["Provider Full_Name + NPI", "Client Name"])
+
+temp8 = temp6.groupby(['Provider Full_Name + NPI']).filter(lambda x: x['Client Name'].nunique() >1)
+
+temp8.groupby('Provider Full_Name + NPI')['Client Name'].value_counts()
+
+
+temp = df3_2017.groupby(['Provider Full_Name + NPI', 'Client Name']).agg({'# of Charts': sum, '# of Charts Recovered' : sum})
+temp['Provider Full_Name + NPI + Client Name'] = temp.index
+temp['Provider Full_Name + NPI'] = temp['Provider Full_Name + NPI + Client Name'].astype(str).apply(lambda x : x.split(',')[0])
+temp['Client Name'] = temp['Provider Full_Name + NPI + Client Name'].astype(str).apply(lambda x : x.split(',')[1])
+
+temp['Provider Full_Name + NPI'] = temp['Provider Full_Name + NPI'].astype(str).apply(lambda x : x.lstrip("('").rstrip("'"))
+temp['Client Name'] = temp['Client Name'].astype(str).apply(lambda x : x.lstrip(" '").rstrip("')"))
+
+
+del temp['Provider Full_Name + NPI + Client Name']
+temp = temp.reset_index(drop = True)
+temp['% of Charts Recovered'] = temp['# of Charts Recovered']/temp['# of Charts'] * 100
+temp['Percent_max'] = temp.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('max')
+temp['Percent_min'] = temp.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('min')
+
+temp = temp.groupby(['Provider Full_Name + NPI', 'Client Name']).filter(lambda x: ((x.Percent_min < 100) & (x.Percent_max > 0)).all())
+
+temp['Most Successful'] = temp.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('max')
+
+temp1 = temp[temp['Most Successful'] == temp['% of Charts Recovered']]
+temp1 = temp1[temp1['Most Successful'] != 0]
+
+temp2 = temp1.groupby(['Provider Full_Name + NPI']).filter(lambda x: x['Client Name'].nunique() > 1 )
+temp3 = temp1.groupby(['Provider Full_Name + NPI']).filter(lambda x: x['Client Name'].nunique() == 1 )
+
+temp2['Highest Charts Recovered'] = temp2.groupby(['Provider Full_Name + NPI'])['# of Charts Recovered'].transform('max')
+temp4 = temp2[temp2['Highest Charts Recovered'] == temp2['# of Charts Recovered']]
+
+temp5 = temp4              
+temp5['Highest Charts'] = temp4.groupby(['Provider Full_Name + NPI'])['# of Charts'].transform('max')
+temp6 = temp4[temp4['Highest Charts'] == temp4['# of Charts']]
+temp7 = temp6.groupby(['Provider Full_Name + NPI']).filter(lambda x: x['Client Name'].nunique() == 1)
+temp8 = temp6.groupby(['Provider Full_Name + NPI']).filter(lambda x: x['Client Name'].nunique() >1)
+
+temp8['Client Name'].value_counts()
+
+prov_list1 = df3_2017['Provider Full_Name + NPI'].unique()
+prov_list1 = pd.DataFrame(prov_list1)
+prov_list1.columns = ['Provider Full_Name + NPI']        
+prov_list1['Provider Full_Name + NPI'] = prov_list1['Provider Full_Name + NPI'].astype(str).apply(lambda x : x.lstrip("('").rstrip("'"))
+     
+prov_list1 = pd.merge(prov_list1, df, how = 'left', on = "Provider Full_Name + NPI") 
+   
+prov_list2 = df3_2017['Provider Full_Name + NPI'].unique()
+prov_list1 = pd.DataFrame(prov_list1)
+prov_list1.columns = ['Provider Full_Name + NPI']        
+prov_list1['Provider Full_Name + NPI'] = prov_list1['Provider Full_Name + NPI'].astype(str).apply(lambda x : x.lstrip("('").rstrip("'"))
+     
+prov_list1 = pd.merge(prov_list1, df, how = 'left', on = "Provider Full_Name + NPI") 
+          
+        
+prov_list2 = df3_2016['Provider Full_Name + NPI'].unique()        
+prov_list2 = pd.DataFrame(prov_list2)
+prov_list2.columns = ['Provider Full_Name + NPI']        
+prov_list2['Provider Full_Name + NPI'] = prov_list2['Provider Full_Name + NPI'].astype(str).apply(lambda x : x.lstrip("('").rstrip("'"))
+
+df1 = df[(df['Year'] == 2016)]       
+prov_list2 = pd.merge(prov_list2, df1, how = 'left', on = "Provider Full_Name + NPI") 
+prov_list2 = prov_list2.drop_duplicates()        
+        
+        
+prov_list1.to_csv('Provider in different client for year 2017.csv', index = False)
+prov_list2.to_csv('Provider in different client for year 2016.csv', index = False)        
+        
+prov_list1['Percent_max'] = prov_list1.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('max')
+prov_list1['Percent_min'] = prov_list1.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('min')
+prov_list1 = prov_list1.groupby(['Provider Full_Name + NPI', 'Client Name']).filter(lambda x: ((x.Percent_min < 100) & (x.Percent_max > 0)).all())
+
+prov_list2['Percent_max'] = prov_list2.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('max')
+prov_list2['Percent_min'] = prov_list2.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('min')
+prov_list2 = prov_list2.groupby(['Provider Full_Name + NPI', 'Client Name']).filter(lambda x: ((x.Percent_min < 100) & (x.Percent_max > 0)).all())
+    
+
+### FBD
+
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jul  4 16:07:29 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+
+df = pd.read_csv('ProvData PNP.csv')
+pnp_reason = pd.read_csv('pnp.csv')
+fdd = pd.read_csv('FDD.csv')
+
+fdd= fdd.drop_duplicates()
+fdd1 = fdd.iloc[:,[0,1,3,6]]
+pnp_reason1 = pnp_reason.iloc[:,[0,2,3]]
+
+df = df.rename(columns = {'Location: Location ID' : 'Location ID', 'Provider: First Name' : 'First Name'})
+
+df = df[~(df['Year'] == 2015)]
+df = df[~(df['Year'] == 2018)]
+
+PNP_reason = pd.merge(df, pnp_reason1, how = 'left', on = ['Project Name','Location ID'])
+pnp_reason1 = pnp_reason1.drop_duplicates()
+PNP_reason = PNP_reason.drop_duplicates()
+
+#PNP_reason = PNP_reason[~(PNP_reason['Year'] == 2015)]
+#PNP_reason = PNP_reason[~(PNP_reason['Year'] == 2018)]
+#invoices = invoices.rename(columns = {'Location: Location ID' : 'Location ID', 'Provider: First Name' : 'First Name', ''})
+#invoices = invoices.rename(columns = {'Location: Location ID' : 'Location ID'})
+#df_days = pd.merge(PNP_reason, days1, how = 'left', on = ['Project Name','Location ID'])
+#df1 = df.iloc[:,[0,2,7]]
+#df1.info()
+#df1 = df1.drop_duplicates()
+#fdd2 = pd.merge(fdd1, df1, how = 'left', on = ['Project Name','Location ID'])
+#del beyond_due_date['PNP.Reason_x']
+
+beyond_due_date = PNP_reason[PNP_reason['PNP.Reason_y'] == 'First Appointment Beyond Due Date (FBD)']
+df_days = pd.merge(beyond_due_date, fdd1, how = 'left', on = ['Project Name','Location ID'])
+
+#beyond_due_date = beyond_due_date[~(beyond_due_date['Year'] == 2015)]
+#beyond_due_date = beyond_due_date[~(beyond_due_date['Year'] == 2018)]
+#fdd1 = fdd1.rename(columns = {'Location.ID' : 'Location ID', 'Project.Name' : 'Project Name'})
+
+df_days['Address'] = df_days['Address'].str.replace('\,,,','', regex = True)
+df_days['Address'] = df_days['Address'].astype(str).map(lambda x: x.lstrip(','))
+
+early_days = df_days[df_days['Days'] < 90]
+medieval_days = df_days[df_days['Days'] > 90]
+
+
+### Grouping according to time
+
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jul 17 17:56:07 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import plotly.plotly as py
+
+subject = pd.read_csv('Subject_call_log.csv')
+new_subject = pd.read_csv('timestamp_subject.csv')
+subject = subject.drop_duplicates()
+analysis = Partial_recover.groupby('Provider Full_Name + NPI').filter(lambda x : ~((x['Num of Charts Recovered'] == x['# of Charts']).all()))
+analysis = analysis.groupby('Provider Full_Name + NPI').filter(lambda x : (x['Num of Charts Recovered'] > 0).all())
+
+analysis = analysis[~(analysis['Num of Charts Recovered'] == analysis['# of Charts'])]
+analysis_loc = analysis['Location ID'].unique()
+analysis_loc = pd.DataFrame(analysis_loc)                     
+analysis_loc.columns = ['Location ID']
+
+subject = subject.rename(columns = {'Location: Location ID' : 'Location ID', 'Provider.Full_Name...NPI' : 'Provider Full_Name + NPI', 'Project.Name' : 'Project Name'})
+
+analysis_loc1 = pd.merge(analysis_loc, subject, how = 'left', on = "Location ID") 
+analysis_loc2 = analysis_loc1[analysis_loc1['Call Outcome'] == 'MRT Unavailable']
+analysis_loc_ext = analysis_loc1[analysis_loc1['Subject'] == 'Extension/Reschedule of Appointment']
+analysis_loc_charts_added = analysis_loc1[analysis_loc1['Subject'] == 'Charts Added']
+
+
+
+
+
+df = pd.read_csv('timestamp.csv')
+df1 = df.loc[~df['Project Name'].isin(['DISNEYLAND_CA_PCP_RETRO2013','RevCult Test 1','RG_RevCult Test 2', 'Aetna|EP1408_01|FL|MRR|03140801', 'Epiconnect MRR', 'DISNEYLAND_CA_PCP_RETRO2016', 'ScanTech UAT', 'UHG|TN ASH Audit 2017|MRR|03171038', 'RG_FSL Test','FSL MRR Test'])]
+df1['Created Timestamp'] = pd.to_datetime(df1['Created Timestamp'])
+see1 = df1['Created Timestamp'].to_period('D')
+see1 = pd.timedelta_range(df1['Created Timestamp'], periods=24, freq="1H")
+
+import datetime as dt
+see = df1.iloc[:, 3]
+see = pd.DataFrame(see)
+see = see.groupby(pd.Grouper(key='Created Timestamp', freq="1H"))['Created Timestamp'].count()
+see = pd.DataFrame(see)
+see['Time'] = see.index
+see['time'] = see['Time'].dt.time
+see['Time1'] = see['time'].astype(str).apply(lambda x : x.split(':')[0])
+see['Time1'] = see['Time1'].astype(int)
+see1 = see.groupby('Time1').sum()
+see1 = see1.rename(columns = {'Created Timestamp' : 'Non_NRP_loc'})
+
+see1.plot(kind = 'bar')
+
+nrp = Valid_PNP[Valid_PNP['PNP.Reason'] == 'Non Responsive Provider (NRP)']
+new_subject = new_subject.rename(columns = {'Location: Location ID' : 'Location ID'})
+nrp_provlist = nrp['Location ID'].unique()
+nrp_provlist = pd.DataFrame(nrp_provlist)
+nrp_provlist.columns = ['Location ID']
+nrp = pd.merge(nrp_provlist, new_subject , how = 'left', on = ['Location ID'])
+
+nrp_log = nrp.iloc[:, 3]
+nrp_log = pd.DataFrame(nrp_log)
+nrp_log = nrp_log.groupby(pd.Grouper(key='Created Timestamp', freq="1H"))['Created Timestamp'].count()
+nrp_log = pd.DataFrame(nrp_log)
+nrp_log['Time'] = nrp_log.index
+nrp_log['time'] = nrp_log['Time'].dt.time
+nrp_log['Time1'] = nrp_log['time'].astype(str).apply(lambda x : x.split(':')[0])
+nrp_log['Time1'] = nrp_log['Time1'].astype(int)
+nrp_log1 = nrp_log.groupby('Time1').sum()
+nrp_log1 = nrp_log1.rename(columns = {'Created Timestamp' : 'NRP_loc'})
+nrp_log1.plot(kind = 'bar')
+plt.show()
+
+xs = np.linspace(0,8,200)
+plt.bar(xs,see1,color='k')
+plt.bar(nrp_log1,color='g')
+plt.show()
+
+nrp_log1.to_csv('call_pattern_nrp.csv', index = False)
+see1.to_csv('call_pattern_non_nrp.csv', index = False)
+
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.stats import gaussian_kde
+
+fig = plt.figure() # Create matplotlib figure
+
+ax = fig.add_subplot(111) # Create matplotlib axes
+ax2 = ax.twinx() # Create another axes that shares the same x-axis as ax.
+
+width = 0.4
+
+nrp_log1.plot(kind='bar', color='red', ax=ax, width=width, position=1, label = 'NRP')
+see1.plot(kind='bar', color='blue', ax=ax2, width=width, position=0, label = 'Non-NRP')
+
+ax.set_ylabel('NRP')
+ax.legend
+ax2.set_ylabel('Non_NRP')
+
+plt.legend('')
+plt.show()
+
+fig.savefig('fig.png')
+
+
+nrp1 = pd.merge(nrp, subject , how = 'left', on = ['Project Name', 'Location ID'])
+
+unavailable = nrp.loc[nrp['Call Outcome'].isin(['Office closed/No voice mail','Specific Call Back Time','Voice mail'])]
+available = nrp.loc[~(nrp['Call Outcome'].isin(['Office closed/No voice mail','Specific Call Back Time','Voice mail']))]
+ 
+unavailable = unavailable.iloc[:, 4]
+unavailable = pd.DataFrame(unavailable)
+unavailable['Created Timestamp'] = pd.to_datetime(unavailable['Created Timestamp']) 
+unavailable = unavailable.groupby(pd.Grouper(key='Created Timestamp', freq="1H"))['Created Timestamp'].count()
+unavailable = pd.DataFrame(unavailable)
+unavailable['Time'] = unavailable.index
+unavailable['time'] = unavailable['Time'].dt.time
+unavailable['Time1'] = unavailable['time'].astype(str).apply(lambda x : x.split(':')[0])
+unavailable['Time1'] = unavailable['Time1'].astype(int)
+unavailable1 = unavailable.groupby('Time1').sum()
+unavailable1 = unavailable1.rename(columns = {'Created Timestamp' : 'Unavailable'})
+
+available = available.iloc[:, 4]
+available = pd.DataFrame(available)
+available['Created Timestamp'] = pd.to_datetime(available['Created Timestamp']) 
+available = available.groupby(pd.Grouper(key='Created Timestamp', freq="1H"))['Created Timestamp'].count()
+available = pd.DataFrame(available)
+available['Time'] = available.index
+available['time'] = available['Time'].dt.time
+available['Time1'] = available['time'].astype(str).apply(lambda x : x.split(':')[0])
+available['Time1'] = available['Time1'].astype(int)
+available1 = available.groupby('Time1').sum()
+available1 = available1.rename(columns = {'Created Timestamp' : 'Available'})
+
+
+un_av = pd.concat([available1, unavailable1], axis = 1)
+un_av.plot(y=["Available", "Unavailable"], kind="bar")
+un_av['Total Call'] = un_av['Available'] + un_av['Unavailable']
+un_av['Perc'] = un_av['Unavailable']/un_av['Total Call']
+un_av['Perc'].plot(label = 'Percentage of Unavailable call with respect to total call at that time', xticks = np.arange(0, 24, 1))
+un_av['Perc_totalcall'] = un_av['Total Call']/ sum(un_av['Total Call'])
+un_av.Perc.plot(label="Percentage of Unavailable call with respect to total call at that time", legend=True, xticks = np.arange(0, 24, 1))
+un_av.Perc_totalcall.plot(secondary_y=True, label="Perc_total_call", legend=True, xticks = np.arange(0, 24, 1))
+un_av.plot(y = ['perc', '')
+
+fig = plt.figure() # Create matplotlib figure
+
+ax = fig.add_subplot(111) # Create matplotlib axes
+ax2 = ax.twinx() # Create another axes that shares the same x-axis as ax.
+
+width = 0.4
+
+nrp_log1.plot(kind='bar', color='red', ax=ax, width=width, position=1, label = 'NRP')
+see1.plot(kind='bar', color='blue', ax=ax2, width=width, position=0, label = 'Non-NRP')
+
+ax.set_ylabel('NRP')
+ax.legend
+ax2.set_ylabel('Non_NRP')
+
+plt.legend('')
+plt.show()
+
+nrp_nonnrp = pd.concat([nrp_log1, see1], axis = 1)
+nrp_nonnrp.plot(y=["NRP_loc", "Non_NRP_loc"], kind="bar")
+nrp_nonnrp.plot()
+
+fig = plt.figure()
+nrp_nonnrp.NRP_loc.plot(label="NRP", legend=True, xticks = np.arange(0, 24, 1))
+nrp_nonnrp.Non_NRP_loc.plot(secondary_y=True, label="Non-NRP", legend=True)
+
+fig.savefig('NRP vs Non-NRP.png')
+
+fig1 = plt.figure()
+un_av.plot()
+plt.show()
+fig1.savefig('Unavailable vs Available for NRP location.png') 
+
+
+### Investigating Partial Recover
+
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jul 20 15:11:54 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+
+partial_recover = pd.read_csv('Updated ProvDB.csv')
+workflow = pd.read_csv('workflow status.csv')
+pnp = pd.read_csv('pnp.csv')
+subject = pd.read_csv('Subject_call_log.csv')
+invoices = pd.read_csv('invoices_with_hold_reason.csv')
+invoices = invoices.drop_duplicates(['Location', 'Invoice Type', 'Hold Reason', 'Invoice Status'])
+
+partial_recover = partial_recover.rename(columns = {'Location.ID' : 'Location ID', 'Provider.Full_Name...NPI' : 'Provider Full_Name + NPI', 'Project.Name' : 'Project Name', 'X..of.Charts.Recovered' : 'Num of Charts Recovered', 'X..of.Charts' : '# of Charts','X..of.Charts.Recovered.1' : '% of Charts Recovered'})
+subject = subject.rename(columns = {'Location: Location ID' : 'Location ID', 'Provider.Full_Name...NPI' : 'Provider Full_Name + NPI', 'Project.Name' : 'Project Name', 'X..of.Charts.Recovered' : 'Num of Charts Recovered', 'X..of.Charts' : '# of Charts','X..of.Charts.Recovered.1' : '% of Charts Recovered'})
+invoices = invoices.rename(columns = {'Location' : 'Location ID', 'Provider.Full_Name...NPI' : 'Provider Full_Name + NPI', 'Project.Name' : 'Project Name', 'X..of.Charts.Recovered' : 'Num of Charts Recovered', 'X..of.Charts' : '# of Charts','X..of.Charts.Recovered.1' : '% of Charts Recovered'})
+ 
+                                    
+df3 = pd.merge(partial_recover, workflow, how = 'left', on = ['Project Name','Location ID'])
+
+pnp = pnp.loc[:, ['Location ID', 'Project Name', 'PNP.Reason']]
+pnp = pnp.drop_duplicates(['Location ID'])
+df4 = pd.merge(df3, pnp, how = 'left', on = ['Project Name','Location ID'])
+df4 = df4.drop_duplicates()
+
+#df4.to_csv('ss.csv', index = False)
+
+df4['PNP'] = np.where(((df4['Workflow Status'] == "PNP") & (df4['% of Charts Recovered'] == 0)), 'Valid', 'Non-Valid')
+
+Valid_PNP = df4[df4['PNP'] == "Valid"]
+Non_PNP = df4[~(df4['PNP'] == "Valid")]
+Schedule = Non_PNP[~(Non_PNP['Appointment Status'] == "None Scheduled")]
+Non_Schedule = Non_PNP[Non_PNP['Appointment Status'] == "None Scheduled"]
+
+partial_recover = Non_PNP
+partial_recover = partial_recover[(partial_recover['% of Charts Recovered'] < 100) & (partial_recover['% of Charts Recovered'] > 0)]
+
+partial_recover_provlist = partial_recover['Location ID'].unique()
+partial_recover_provlist = pd.DataFrame(partial_recover_provlist)
+partial_recover_provlist.columns = ['Location ID']
+partial_recover = pd.merge(partial_recover_provlist, subject, how = 'left', on = 'Location ID')
+partial_recover = partial_recover[~pd.isna(partial_recover['Project Name'])]
+partial_recover = partial_recover.drop_duplicates()
+
+Added = partial_recover[partial_recover['Subject'] == 'Charts Added']
+
+Added = Added['Location ID'].unique()
+Added = pd.DataFrame(Added)
+Added.columns = ['Location ID']
+Added = pd.merge(Added, partial_recover1, how = 'left', on = 'Location ID')
+Added = Added[~pd.isna(Added['Project Name'])]
+Added = Added.drop_duplicates()
+Added.to_csv('Charts_added_partial_recover.csv', index = False)
+
+reb = reb['Location ID'].unique()
+reb = pd.DataFrame(reb)
+reb.columns = ['Location ID']
+reb = pd.merge(reb, invoices, how = 'left', on = 'Location ID')
+reb = reb.drop_duplicates()
+reb = reb[reb['Hold Reason'] == 'Above Approval Limit']
+reb = pd.merge(reb, partial_recover1, how = 'left', on = 'Location ID')
+reb.to_csv('Reimbursement_related.csv', index = False)
+
+Ext = partial_recover[partial_recover['Subject'] == 'Extension/Reschedule of Appointment']
+
+Ext = Ext['Location ID'].unique()
+Ext = pd.DataFrame(Ext)
+Ext.columns = ['Location ID']
+Ext = pd.merge(Ext, partial_recover1, how = 'left', on = 'Location ID')
+Ext = Ext[~pd.isna(Ext['Project Name'])]
+Ext = Ext.drop_duplicates()
+Ext.to_csv('Ext_partial_recover.csv', index = False)
+
+
+list1 = Added['Provider Full_Name + NPI'].unique()
+list2 = Ext['Provider Full_Name + NPI'].unique()
+list3 = reb['Provider Full_Name + NPI'].unique()
+
+others = partial_recover1[~(partial_recover1['Provider Full_Name + NPI'].isin(list1))]
+others = others[~(others['Provider Full_Name + NPI'].isin(list2))]
+others = others[~(others['Provider Full_Name + NPI'].isin(list3))]
+
+
+### Master Python Program
+
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jul 10 23:22:51 2018
+
+@author: INTN019
+"""
+
+### Tagging a provider as PNP, scheduled, Non-scheduled
+
+
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jul  2 17:31:56 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+
+df = pd.read_csv('Updated ProvDB.csv')
+workflow = pd.read_csv('workflow status.csv')
+pnp = pd.read_csv('pnp.csv')
+
+df = df.rename(columns = {'Location.ID' : 'Location ID', 'Project.Name' : 'Project Name', 'Provider.Full_Name...NPI' : 'Provider Full_Name + NPI'})
+workflow = workflow.rename(columns = {'Location: Location ID' : 'Location ID'})
+
+df['Percent_max'] = df.groupby(['Provider Full_Name + NPI'])['X..of.Charts.Recovered.1'].transform('max')
+df['Percent_min'] = df.groupby(['Provider Full_Name + NPI'])['X..of.Charts.Recovered.1'].transform('min')
+
+df2 = df.groupby(['Provider Full_Name + NPI']).filter(lambda x: ((x.Percent_max > 0) & (x.Percent_min < 100)).all())
+df2 = df2.groupby('Provider Full_Name + NPI').filter(lambda x: len(x) > 1)
+
+df3 = pd.merge(df2, workflow, how = 'left', on = ['Project Name','Location ID'])
+df4 = pd.merge(df3, pnp, how = 'left', on = ['Provider Full_Name + NPI', 'Project Name','Location ID'])
+
+#df4.to_csv('ss.csv', index = False)
+
+df4['PNP'] = np.where(((df4['Workflow Status'] == "PNP") & (df4['% of Charts Recovered'] == 0)), 'Valid', 'Non-Valid')
+
+PNP = df4[df4['PNP'] == "Valid"]
+Non_PNP = df4[~(df4['PNP'] == "Valid")]
+Schedule = Non_PNP[~(Non_PNP['Appointment.Status'] == "None Scheduled")]
+Non_Schedule = Non_PNP[Non_PNP['Appointment.Status'] == "None Scheduled"]
+
+#Non_PNP.to_csv('Non_PNP.csv', index = False)
+#Schedule.to_csv('Schedule.csv', index = False)
+#Non_Schedule.to_csv('Non_Schedule.csv', index = False)
+#df2 = df2.rename(columns = {'Location: Location ID' : 'Location ID'})
+#df2 = df2.rename(columns = {'Location: Location ID' : 'Location ID'})
+   
+
+### Extracting City and State Name
+
+
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jul  5 12:49:08 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+
+df = pd.read_csv('no_of_address_of_provider.csv')
+
+df['Address'] = df['Address'].astype(str).map(lambda x: x.lstrip(','))
+df['City'] = df['City'].str.upper()
+
+
+temp3 = temp3[~(temp3['Year'] == 2015)]
+temp3 = temp3[~(temp3['Year'] == 2018)]
+
+temp1 = temp[~(pd.isna(temp['Address']))]
+temp2 = temp[pd.isna(temp['Address'])]
+
+pnp_6= pnp_6[~pd.isna(pnp_6['Address'])]
+
+temp1['City'] = temp1['Address'].astype(str).map(lambda x: x.split(',')[-2])
+temp1['State'] = temp1['Address'].astype(str).map(lambda x: x.split(',')[-1])
+
+temp3 = pd.concat([temp1, temp2])
+
+
+df.to_csv('no_of_address_of_provider.csv',index = False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Checking the invoice issues
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jul  2 19:38:21 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+
+DB = pd.read_csv('Updated ProvDB.csv')
+invoices = pd.read_csv('Location invoices.csv')
+
+temp = DB.iloc[:,[0,2,6]]
+invoices = invoices.rename(columns = {'Location: Location ID' : 'Location ID'})
+test = pd.merge(temp, invoices, how = "left", on = ['Project Name', 'Location ID'])
+test = test.drop_duplicates()
+
+test1 = pd.merge(DB, test, how = "left", on = ['Provider Full_Name + NPI','Project Name', 'Location ID'])
+test1 = test1.drop_duplicates()
+
+df =test1
+df['Percent_max'] = test1.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('max')
+df['Percent_min'] = test1.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('min')
+
+df2 = df.iloc[:,[0,1,2,6,3]]
+df2 = df.groupby(['Provider Full_Name + NPI']).filter(lambda x: ((x.Percent_max <= 100) & (x.Percent_min >= 0)).all())
+df2 = df.groupby(['Provider Full_Name + NPI']).filter(lambda x: (x.Percent_max != x.Percent_min).all())
+
+
+
+listA = list(invoices[~(pd.isna(invoices['Invoice Type']))]['Invoice Type'].unique())
+setA = set(listA)
+listB = list(test1[~(pd.isna(df2['Invoice Type']))]['Invoice Type'])
+P_present = []
+Prov_list = df2['Provider Full_Name + NPI'].unique()
+
+for prov in Prov_list:
+    temp = test1[test1['Provider Full_Name + NPI'] == prov]
+    listB = list(temp[~(pd.isna(temp['Invoice Type']))]['Invoice Type'])
+    if setA.intersection(listB):
+        P_present.append(temp['Provider Full_Name + NPI'].unique())
+    else:
+        pass
+
+P_df = pd.DataFrame(P_present)
+P_df.columns=['Provider Full_Name + NPI']
+
+
+workflow_status = pd.read_csv('With workflow status.csv')
+workflow_status['Percent_max'] = workflow_status.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('max')
+workflow_status['Percent_min'] = workflow_status.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('min')
+total = pd.merge(workflow_status, test1, how = "left", on = ['Provider Full_Name + NPI', 'Project Name', 'Location ID', 'Client Name', 'Year','Primary Phone No','Secondary Phone No', '# of Charts', '# of Charts Recovered', '% of Charts Recovered', 'Address', 'Zip Code', 'Full Name', 'Processed Full Name','Location Identifier', 'Percent_max', 'Percent_min'])
+
+df4 = total.groupby(['Provider Full_Name + NPI']).filter(lambda x: ((x.Percent_max <= 100) & (x.Percent_min >= 0)).all())
+df5 = df4.groupby(['Provider Full_Name + NPI']).filter(lambda x: (x.Percent_max != x.Percent_min).all())
+
+df5['Percent_max'] = df5.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('max')
+df5['Percent_min'] = df5.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('min')
+df5 = df5.groupby(['Provider Full_Name + NPI']).filter(lambda x: ((x.Percent_max <= 100) & (x.Percent_min >= 0)).all())
+df5 = df5.groupby(['Provider Full_Name + NPI']).filter(lambda x: (x.Percent_max != x.Percent_min).all())
+
+see = df5[df5['Appointment Status'] == 'None Scheduled']
+see1 = see[see['Workflow Status'] == "PNP"]
+see2 = df5[((df5['Appointment Status'] == 'None Scheduled') & (df5['Workflow Status'] == 'PNP'))]
+see3 = see2[~(pd.isna(see2['Invoice Type']))]
+
+see4 = test1[~(pd.isna(test1['Invoice Type']))]
+df5 = df5.groupby(['Provider Full_Name + NPI']).filter(lambda x: (x.Percent_max != x.Percent_min).all())
+
+
+
+a = pd.merge(P_df, test1, how = 'left', on = 'Provider Full_Name + NPI')
+a.to_csv('Payment Issues Address.csv', index = False)
+
+
+list(x1['Provider Full_Name + NPI'])
+data = x1[P_p1.isin(list(x1['Provider Full_Name + NPI'].unique()))]
+boolean = P_p1.isin(list(x1['Provider Full_Name + NPI'].unique()))
+boolean[15]
+d = x1.loc[boolean == True]
+d = x1[boolean == True]
+d = df6.loc[df6['Provider Full_Name + NPI'].isin(P_p1)]
+Prov_list = x1['Provider Full_Name + NPI'].unique()
+P_present = []
+listA = list(x1[~(pd.isna(x1['Invoice Type']))]['Invoice Type'].unique())
+setA = set(listA)
+
+
+P_present1 = pd.DataFrame(list(P_present.values()), columns=['Provider Full_Name + NPI'])
+P_present1 = P_present1.drop_duplicates()
+a = pd.merge(P_present1, x1, how = 'left', on = 'Provider Full_Name + NPI')
+a.to_csv('Payment issues.csv', index = False)
+b = pd.merge(P_present1, df, how = 'left', on = 'Provider Full_Name + NPI')
+b = b.drop_duplicates()
+b.to_csv('Payment issues OI.csv', index = False)
+df = pd.read_csv('New_ProviderDB.csv')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+### Generating Unique Location Identifier and Calculating the no of unique location of providers
+
+df = pd.read_csv("Updated ProvDB.csv")
+df1 = df.iloc[:, [0,4,5]]
+
+Prov_list = df1['Provider Full_Name + NPI'].unique()
+outdict_={}
+Provider_Charts = {}
+count = 0
+x = range(0, 505445)
+Prov_list1 = Prov_list[0:100000]
+Prov_list2 = Prov_list[100000:200000]
+Prov_list3 = Prov_list[200000:300000]
+Prov_list4 = Prov_list[300000:400000]
+Prov_list5 = Prov_list[400000:507197]
+
+##Run in different consoles for faster computation
+
+for prov in Prov_list5:
+    temp = df1[df1['Provider Full_Name + NPI'] == prov]
+    temp1 = temp[~(pd.isna(temp['Primary Phone No']) | pd.isna(temp['Secondary Phone No']))]
+    phone1 = temp1.set_index('Primary Phone No')['Secondary Phone No'].to_dict()
+    phone2 = temp1.set_index('Secondary Phone No')['Primary Phone No'].to_dict()   
+    phone1.update(phone2)
+    output = [] 
+    al=list(temp[~(pd.isna(temp['Primary Phone No']))]['Primary Phone No'])
+    al1=list(temp[~(pd.isna(temp['Secondary Phone No']))]['Secondary Phone No'])
+    al=al+al1
+    for i in al:
+        if ((i not in output)):
+            if (i in phone1):
+                if (phone1[i] not in output):
+                    output.append(i)
+            else:
+                output.append(i)
+        else:
+            pass
+    a = len(output) 
+    outdict_[prov]=a
+
+pn=list(df1[~(pd.isna(df['Primary Phone No']))]['Primary Phone No'].unique())
+sn=list(df1[~(pd.isna(df['Secondary Phone No']))]['Secondary Phone No'].unique())
+psn = pn + sn
+
+X = df1[~(pd.isna(df1['Primary Phone No']) | pd.isna(df1['Secondary Phone No']))]
+P1 = X.set_index('Primary Phone No')['Secondary Phone No'].to_dict()
+P2 = X.set_index('Secondary Phone No')['Primary Phone No'].to_dict()   
+P1.update(P2)
+p_output = {} 
+
+for i in psn:
+    if ((i not in p_output)):
+        if (i in P1):
+            if P1[i] not in p_output:
+                p_output[i] = x[count]
+                count+= 1
+        else:
+            p_output[i] = x[count]
+            count+= 1
+    else:
+        pass   
+    
+for i in psn:
+    if(i not in p_output):
+        if(i in P1):
+            if P1[i] in p_output:
+                p_output[i] = p_output[P1[i]]
+        else:
+            p_output[i] = p_output[P1[i]]
+    else:
+        pass
+
+Provider_location = pd.DataFrame(list(outdict1.items()), columns=['Full_Name_NPI', 'Locations'])
+Provider_location.to_csv('outdict1', index = False)
+
+Location_identifier = pd.DataFrame(list(p_output.items()), columns =['Primary Phone No', 'Location Identifier'])
+
+y = pd.merge(df, Location_identifier, how = 'left', on = "Primary Phone No")
+y.to_csv('New_ProviderDB.csv', index = False)
+
+
+### Generating a summary of provider with respect to different client, project, year
+
+df = pd.read_csv('New_ProviderDB.csv')
+unique_client = df.groupby('FP')['Provider..Client.Name'].nunique()
+unique_project = df.groupby('FP')['Project.Name'].nunique()
+unique_year = df.groupby('FP')['Year'].nunique()
+
+analysis = unique_location_Phone.merge(unique_client, on=['FP'])
+analysis = analysis.merge(unique_location_Zip, on=['FP'])
+analysis = analysis.merge(unique_year, on=['FP'])
+
+analysis.to_csv('Report_1.csv', index = False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Removing Stopwords in Full Name of Providers
+import numpy as np
+import pandas as pd
+
+stop = ['MD', 'ANP', 'NP', 'ACNP', 'WHNP', 'HS', 'LLP', 'SG', 'DPM', 'ARPN', 'PCP', 'OF', 'ME']
+
+df = pd.read_csv('BCBS.csv')
+df['Full_Name'] = df['Full_Name'].astype(str)
+def f(col):
+    wl=col.split(" ")
+    a=""
+    for w in wl:
+        if w not in stop:
+            a=a+" "+w
+        else:
+            pass
+    a=a.strip()
+    return a
+
+df['Full_Name_C']=df['Full_Name'].apply(f)
+
+df.to_csv('BCBS.csv', index = False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###Extraction of Phone Number from call comments
+
+
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Jul  8 10:03:57 2018
+
+@author: INTN019
+"""
+
+import re
+import numpy as np
+import pandas as pd
+import itertools
+
+NRP_location = pd.read_csv('NRP_location.csv')
+call_comments = pd.read_csv('Location Call Log.csv')
+
+call_comments = call_comments.rename(columns = {'Location.ID' : 'Location ID'})
+
+NRP_call_log = pd.merge(NRP_location, call_comments, how = 'left', on = 'Location ID')
+NRP_call_log = NRP_call_log.rename(columns = {'Project.Name' : 'Project Name'})
+
+NRP_call_log = NRP_call_log[~pd.isna(NRP_call_log['Project Name'])]
+NRP_location_list = NRP_call_log['Location ID'].unique()
+NRP_location_list1 = NRP_location_list[0:10]
+dict1 = {}
+
+for location in NRP_location_list1:
+    temp = NRP_call_log[NRP_call_log['Location ID'] == location]
+    temp1 = temp[~pd.isna(temp['Comments'])]['Comments'].to_frame()    
+    x = []
+    for index, row in temp1.iterrows():
+        temp3 = (re.findall(r'[\+\(]?[1-9][0-9 .\-\(\)]{8,}[0-9]', row[0]))
+        temp3 = list(map(lambda x : re.sub('[()-.]', '', x), temp3))
+        temp3 = list(map(lambda x: x.replace(' ', ''), temp3))
+#        phone_len10 = list(row.str.extractall(r'(?<!\d)(\d{10})(?!\d)', expand = False))
+#        phone_len11 = list(row.str.extractall(r'(?<!\d)(\d{11})(?!\d)', expand = False))         
+#r'^[0-9]{10}$|^[0-9]{12}$'
+#        if not temp3:
+#           temp3 = re.sub('[()-]', '', temp3[0])
+#       else:
+#            pass
+#        flattened = [val for sublist in temp3 for val in sublist]
+#        temp2 = temp3 + phone_len10 + phone_len11
+#        temp2 = [x for x in temp2 if x != 0]    
+#        flattened = [val for val in temp2]
+        x.append(temp3)
+        
+    if len(x) > 0:    
+        x = pd.DataFrame(x)
+#       x = x.drop_duplicates()  
+        x = x.apply(lambda x: ','.join(x.dropna().astype(str)), axis = 1)
+        x = pd.DataFrame(x)
+        x = x.apply(lambda x: ','.join(x.dropna().astype(str)), axis = 0) 
+    x = x[0].split(",")
+    x = list(set(x))
+#    x = set(x)
+#   x = [ i for i in iter(x) ]
+    dict1[location] = x  
+    
+di = pd.DataFrame(list(dict1.items()), columns=['Location ID', 'Phone Number'])
+di.to_csv('location_with_phone_number_dict.csv', index = False)
+
+    
+    
+    
+#temp2 = temp1.apply(lambda x : re.findall(r'[\+\(]?[1-9][0-9 .\-\(\)]{8,}[0-9]', x))
+#temp2 = temp2.astype(str).apply(lambda x : re.sub('[()-]', '', x)).to_frame()
+#temp2 = temp2.str.replace('[', '', regex = True).replace(']', '', regex = True).replace(' ', '', regex = True)
+#temp2 = temp2.astype(str).apply(lambda x : re.sub('['['\']'-]', '', x)).to_frame()
+
+    myArray = [[v.strip() for v in x] for x in myArray]
+
+    phone_len12 = temp1.str.extract(r'(?<!\d)(\d{12})(?!\d)', expand=False)    
+        
+Source = call_comments['Comments'][0:10]
+y = pd.DataFrame()
+
+z = y['comment'].astype(str).apply(lambda x: pd.Series(x.split(',')))
+
+
+#flat_list = [item for item in temp2]
+#temp2 = temp2.stack().to_frame().T
+#flat_list = [item for sublist in see for item in sublist]
+#merged = list(itertools.chain.from_iterable(temp2))
+
+
+
+    
+    
+    
+#temp2 = temp1.apply(lambda x : re.findall(r'[\+\(]?[1-9][0-9 .\-\(\)]{8,}[0-9]', x))
+#temp2 = temp2.astype(str).apply(lambda x : re.sub('[()-]', '', x)).to_frame()
+#temp2 = temp2.str.replace('[', '', regex = True).replace(']', '', regex = True).replace(' ', '', regex = True)
+#temp2 = temp2.astype(str).apply(lambda x : re.sub('['['\']'-]', '', x)).to_frame()
+#myArray = [[v.strip() for v in x] for x in myArray]
+#phone_len12 = temp1.str.extract(r'(?<!\d)(\d{12})(?!\d)', expand=False)    
+#Source = call_comments['Comments'][0:10]
+#y = pd.DataFrame()
+#z = y['comment'].astype(str).apply(lambda x: pd.Series(x.split(',')))
+#flat_list = [item for item in temp2]
+#temp2 = temp2.stack().to_frame().T
+#flat_list = [item for sublist in see for item in sublist]
+#merged = list(itertools.chain.from_iterable(temp2))
+
+
+
+### Correcting City Names with use of NLP(cosine similarity)
+
+
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Jul  1 12:19:57 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+import re, math
+from collections import Counter
+
+df = pd.read_csv('ProvDB.csv')
+
+df1 = df.iloc[:,[2,6,10,14]]
+
+Project_list = list(df1['Project Name'].unique())
+dict1 = {}
+Word = re.compile(r'\w+')
+
+def word2vec(word):
+    from collections import Counter
+    from math import sqrt
+
+    # count the characters in word
+    cw = Counter(word)
+    # precomputes a set of the different characters
+    sw = set(cw)
+    # precomputes the "length" of the word vector
+    lw = sqrt(sum(c*c for c in cw.values()))
+
+    # return a tuple
+    return cw, sw, lw
+
+def cosdis(v1, v2):
+    # which characters are common to the two words?
+    common = v1[1].intersection(v2[1])
+    # by definition of cosine distance we have
+    return sum(v1[0][ch]*v2[0][ch] for ch in common)/v1[2]/v2[2]
+
+
+for p in Project_list:
+    temp = df1[df1['Project Name'] == p]
+    l1 = list(temp[~(pd.isna(temp['Location Identifier_y']))]['Location Identifier_y'].unique())
+    for l in l1:
+        temp1 = temp[temp['Location Identifier_y'] == l]
+        l2 = list(temp1[~(pd.isna(temp1['Location ID']))]['Location ID'].unique())
+        for i in range(0, len(l2)):
+            for j in range(0,len(l2)):
+                if(~(pd.isna(temp1.iloc[i]['Address'] and temp1.iloc[j]['Address']))):    
+                    vec1 = text_to_vector(temp1.iloc[i]['Address'])
+                    vec2 = text_to_vector(temp1.iloc[j]['Address'])
+                    dict1[temp1.iloc[i]['Address'],temp1.iloc[j]['Address']] = get_cosine(vec1,vec2)
+                else:
+                    pass
+                        
+for p in Project_list:
+    temp = df1[df1['Project Name'] == 'BSCA|HMO RADV 2017|MRR|03170678']
+    l1 = list(temp[~(pd.isna(temp['Location Identifier_y']))]['Location Identifier_y'].unique())
+    for l in l1:
+        temp1 = temp[temp['Location Identifier_y'] == l]
+        l2 = list(temp1[~(pd.isna(temp1['Location ID']))]['Location ID'].unique())
+        for i in range(0, len(l2)):
+            for j in range(0, len(l2)):
+                vec1 = text_to_vector(temp1.iloc[i]['Address'])
+                vec2 = text_to_vector(temp1.iloc[j]['Address'])
+                dict1[temp1.iloc[i]['Address'], temp1.iloc[j]['Address']] = get_cosine(vec1,vec2)
+
+
+vec1 = text_to_vector(temp1.iloc[1]['Address'])
+count = 0
+vec2 = text_to_vector(temp1.iloc[2]['Address'])
+dict1[temp1.iloc[1]['Address'], temp1.iloc[2]['Address']] = get_cosine(vec1,vec2)
+
+
+temp = y.iloc[24,:]['City']
+temp1 = y.iloc[25,:]['City']
+
+vec1 = text_to_vector(temp.loc['City'])
+vec2 = text_to_vector(temp1.loc['City'])
+x = get_cosine(vec1,vec2)
+
+import nltk
+nltk.edit_distance("Scottsdale", "Csottsdale")
+
+from nltk.corpus import wordnet
+
+wordFromList1 = wordnet.synsets(temp)
+wordFromList2 = wordnet.synsets(temp1)
+s = wordFromList1.wup_similarity(wordFromList2)
+
+
+
+
+va = word2vec(temp)
+vb = word2vec(temp1)
+
+cosdis(va,vb)
+
+
+
+
+
+
+### Filling city with help of zip code
+
+import numpy as np
+import pandas as pd
+from uszipcode import ZipcodeSearchEngine
+
+zipcode = pd.read_csv('Zip_code.csv')
+df = pd.read_csv('no_of_address_of_provider.csv')
+
+zipcode = zipcode.rename(columns = {'Name' : 'Location.ID'})
+
+y = pd.merge(df, zipcode, how = 'left', on = "Location.ID")
+
+zip_city = y[((~pd.isna(y['ZIP_Code__c'])) & (pd.isna(y['City'])))]
+
+zip_list = zip_city['ZIP_Code__c'].tolist()
+
+search = ZipcodeSearchEngine()
+zipcode = search.by_zipcode(zip_list)
+
+dict_city = {}
+
+for i in zip_list:
+    zipcode = search.by_zipcode(i)
+    dict_city[i] = zipcode.City
+    
+
+de = pd.DataFrame(list(dict_city.items()), columns =['ZIP_Code__c', 'City'])
+zip_city1 = pd.merge(zip_city, de, how = 'left', on = "ZIP_Code__c")
+zip_city1.pop('City_x')
+
+zip_city2 = zip_city1.iloc[:,[0,1,2,3,9,4,5,6,7,8]]
+zip_city2 = zip_city2.rename(columns = {'City_y' : 'City'})
+
+Non_zip_city = y[~((~pd.isna(y['ZIP_Code__c'])) & (pd.isna(y['City'])))]
+
+new_y = pd.concat([Non_zip_city,zip_city2], axis=0)
+new_y.to_csv('no_of_address_of_provider.csv', index = False)
+
+
+
+### Finding Reasons behind NRP Cases (Specific Callback time)
+
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jul 19 11:48:42 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+
+call_log = pd.read_csv('Location Call Log.csv')
+nrp = pd.read_csv('new_nrp.csv')
+df = pd.read_csv('Updated ProvDB.csv')
+Valid_PNP = pd.read_csv('Valid_PNP.csv')
+
+nrp = nrp[nrp['PNP.Reason'] == 'Non Responsive Provider (NRP)']
+nrp = nrp['Location.ID'].unique()
+nrp = pd.DataFrame(nrp)                     
+nrp.columns = ['Location.ID']
+nrp = pd.merge(nrp, call_log, how = 'left', on = 'Location.ID')
+nrp = nrp[~pd.isna(nrp['Project.Name'])]
+
+nrp_callback = nrp[nrp['Call.Outcome'] == 'Specific Call Back Time']
+nrp_callback = nrp_callback['Location.ID'].unique()
+nrp_callback = pd.DataFrame(nrp_callback)                     
+nrp_callback.columns = ['Location ID']
+nrp_callback = pd.merge(nrp_callback, Valid_PNP, how = 'left', on = 'Location ID')
+nrp_callback = nrp_callback[nrp_callback['% of Charts Recovered'] == 0]
+nrp_callback = nrp_callback.drop_duplicates()
+
+nrp_callback = nrp_callback.rename(columns = {'Location.ID' : 'Location ID', 'Provider.Full_Name...NPI' : 'Provider Full_Name + NPI', 'Project.Name' : 'Project Name', 'X..of.Charts.Recovered' : 'Num of Charts Recovered', 'X..of.Charts' : '# of Charts','X..of.Charts.Recovered.1' : '% of Charts Recovered'})
+
+nrp_callback['Percent_max'] = nrp_callback.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('max')
+nrp_callback['Percent_min'] = nrp_callback.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('min')
+
+nrp_callback1 = nrp_callback.groupby(['Provider Full_Name + NPI','Project Name', 'Location ID']).agg({'Num of Charts Recovered' : sum, '# of Charts' : sum})
+nrp_callback1 = nrp_callback1[~pd.isna(nrp_callback1['Provider Full_Name + NPI'])]
+
+temp1 = pd.merge(nrp_callback, nrp_callback1, how = 'left', on = ['Provider Full_Name + NPI', 'Location ID'])                         
+
+del temp1['# of Charts_x']
+del temp1['Num of Charts Recovered_x']
+del temp1['% of Charts Recovered']
+
+temp1['% of Charts Recovered'] = temp1['Num of Charts Recovered_y']/temp1['# of Charts_y'] *100
+
+nrp_callback1 = temp1
+nrp_callback1 = nrp_callback1.rename(columns = {'Num of Charts Recovered_y' : 'Num of Charts Recovered', '# of Charts_y' : '# of Charts'})
+nrp_callback1 = nrp_callback1.drop_duplicates(["Provider Full_Name + NPI","Project Name", "Location ID"])
+nrp_callback1 = nrp_callback1[~(pd.isna(nrp_callback1['PNP.Reason']))]
+nrp_callback1 = nrp_callback1[nrp_callback1['PNP.Reason'] == 'Non Responsive Provider (NRP)']
+
+
+### namm_phone_call_analysis
+
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jul 11 22:15:12 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+
+namm_original = pd.read_csv('namm.csv')
+namm = pd.read_csv('namm.csv')
+namm = namm.iloc[0:1379,]
+
+namm['Year'] = np.where(namm['Project Name'] == 'NAMM CA|PCP 2017|MRR|03170427', '2017', '2018')
+
+namm1 = namm[namm['# of Charts'] == 0]
+namm = namm[namm['# of Charts'] != 0]
+                  
+namm['NPI'] = np.where(namm['NPI'] == 9999999999, np.nan, namm['NPI']) 
+namm['Provider Name'] = namm['Provider Name'].astype(str).apply(lambda x: x.upper())
+
+stop = ['MD', 'ANP', 'NP', 'ACNP', 'WHNP', 'HS', 'LLP', 'SG', 'DPM', 'ARPN', 'PCP', 'OF', 'ME']
+
+def f(col):
+    wl=col.split(" ")
+    a=""
+    for w in wl:
+        if w not in stop:
+            a=a+" "+w
+        else:
+            pass
+    a=a.strip()
+    return a
+
+namm['Processed_Provider_Name'] = namm['Provider Name'].apply(f)
+
+namm = namm.rename(columns = {'Location: Location ID' : 'Location ID', 'Provider.Full_Name...NPI' : 'Provider Full_Name + NPI', 'Project.Name' : 'Project Name'})
+
+namm['Provider Full_Name + NPI'] = namm[['Processed_Provider_Name', 'NPI']].astype(str).apply(lambda x: '-'.join(x), axis=1)
+
+temp = namm.groupby(['Provider Full_Name + NPI', 'Location ID']).agg({'Num of Charts Recovered' : sum, '# of Charts' : sum})
+namm = namm[~pd.isna(namm['Provider Full_Name + NPI'])]
+
+temp1 = pd.merge(namm, temp, how = 'left', on = ['Provider Full_Name + NPI', 'Location ID'])                         
+
+del temp1['# of Charts_x']
+del temp1['Num of Charts Recovered_x']
+del temp1['% of Charts Recovered']
+
+temp1['% of Charts Recovered'] = temp1['Num of Charts Recovered_y']/temp1['# of Charts_y'] *100
+
+namm = temp1
+namm = namm.rename(columns = {'Num of Charts Recovered_y' : 'Num of Charts Recovered', '# of Charts_y' : '# of Charts'})
+namm = namm.drop_duplicates(["Provider Full_Name + NPI", "Location ID"])
+                   
+#temp2 = test.groupby(['Provider Full_Name + NPI', 'Location ID']).filter(lambda x: len(x) > 1)
+#temp3 = test.groupby(['Provider Full_Name + NPI', 'Location ID']).filter(lambda x: len(x) == 1)
+#temp2 = test.groupby(['Provider Full_Name + NPI']).filter(lambda x: x['Location ID'].value_counts().max() == 1)
+#temp3 = test.groupby(['Provider Full_Name + NPI']).filter(lambda x: x['Location ID'].value_counts().max() != 1)
+#test_a = test.groupby(['Provider Full_Name + NPI', 'Location ID']).agg({'Num of Charts Recovered' : sum, '# of Charts' : sum})
+#test_a['Provider Full_Name + NPI - Location ID'] = test_a.index 
+#test_b = pd.merge(test, test_a, how = 'left', on = ['Provider Full_Name + NPI', 'Location ID'])                         
+#test_a = temp2.groupby(['Provider Full_Name + NPI', 'Location ID'])["Num of Charts Recovered"].transform(sum)
+#test = namm.iloc[1:1000, :]
+#test1 = namm_2017.iloc[1:1000, :]
+
+#test_a = test.groupby(['Provider Full_Name + NPI', 'Location ID']).agg({'Num of Charts Recovered' : sum, '# of Charts' : sum})
+#test_b = test.groupby(['Provider Full_Name + NPI', 'Location ID']).agg({'Num of Charts Recovered' : sum, '# of Charts' : sum})
+                     
+#test_c = test_b.drop_duplicates(["Provider Full_Name + NPI", "Location ID"])                     
+#test_a['Provider Full_Name + NPI'] = test_a['Provider Full_Name + NPI - Location ID'].astype(str).map(lambda x: x.split(',')[0])
+#test_a['Location ID'] = test_a['Provider Full_Name + NPI - Location ID'].astype(str).map(lambda x: x.split(',')[1])
+
+                     
+namm = namm[~pd.isna(namm['Project Name'])]
+
+namm['Percent_max'] = namm.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('max')
+namm['Percent_min'] = namm.groupby(['Provider Full_Name + NPI'])['% of Charts Recovered'].transform('min')
+
+
+no_recover = namm.groupby(['Provider Full_Name + NPI']).filter(lambda x: (x.Percent_max == 0).all())
+full_recover = namm.groupby(['Provider Full_Name + NPI']).filter(lambda x: (x.Percent_min == 100).all())
+
+Partial_recover = namm.groupby(['Provider Full_Name + NPI']).filter(lambda x: ((x.Percent_min < 100) & (x.Percent_max)).all())
+
+#no_recover = no_recover.drop_duplicates()
+#full_recover = full_recover.drop_duplicates()
+#Partial_recover = Partial_recover.drop_duplicates()    
+
+pr_1 = Partial_recover.groupby('Provider Full_Name + NPI').filter(lambda x : len(x) > 1)
+
+pr_2 = pr_1[pr_1['Year'] == '2018']
+pr_2 = pr_2.groupby('Provider Full_Name + NPI').filter(lambda x : (x['% of Charts Recovered'] == 0).all())
+
+pr_2_list = pr_2['Provider Full_Name + NPI'].unique()
+pr_2_list = pd.DataFrame(pr_2_list)
+pr_2_list.columns = ['Provider Full_Name + NPI']
+
+pr_2_1 = pd.merge(pr_2_list, pr_1, how = 'left', on = ['Provider Full_Name + NPI'])                         
+pr_2_1 = pr_2_1.drop_duplicates()
+pr_2_1 = pr_2_1.groupby('Provider Full_Name + NPI').filter(lambda x : x['Provider Full_Name + NPI'].count() > 1)
+
+#pr_2 = pr_1.groupby('Provider Full_Name + NPI').filter(lambda x : (x['Year'] == '2018').all())
+#pr_3 = Partial_recover.groupby('Provider Full_Name + NPI').filter(lambda x : ((x['Year'] == '2016') & (x['% of Charts Recovered'] == 0)).all())
+#pr_3 = Partial_recover.groupby('Provider Full_Name + NPI').filter(lambda x : ((x['Year'] == '2016') & (x['% of Charts Recovered'] == 0)).all())
+#temp1 = pd.merge(Partial_recover, pr_3, how = 'left', on = ['Provider Full_Name + NPI', 'Location ID'])                         
+#temp1 = temp1.drop_duplicates()
+
+del pr_2_1['Percent_min']
+del pr_2_1['Percent_max']
+
+
+
+#vec_1 = text_to_vector('655 Euclid Ave ste# 209')
+#vec_2 = text_to_vector('655 EUCLID AVE')
+#get_cosine(vec_1, vec_2)
+
+
+### NLP on Address
+
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Jul  1 12:19:57 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+import re, math
+from collections import Counter
+
+df = pd.read_csv('ProvDB.csv')
+
+df1 = df.iloc[:,[2,6,10,14]]
+
+Project_list = list(df1['Project Name'].unique())
+dict1 = {}
+Word = re.compile(r'\w+')
+
+def get_cosine(vec1,vec2):
+    intersection = set(vec1.keys()) & set(vec2.keys())
+    numerator = sum([vec1[x] * vec2[x] for x in intersection])
+    sum1 = sum([vec1[x]** 2 for x in vec1.keys()])
+    sum2 = sum([vec2[x]**2 for x in vec2.keys()])
+    denominator = math.sqrt(sum1) * math.sqrt(sum2)
+    if not denominator:
+        return 0.0
+    else:
+        return float(numerator)/ denominator
+
+def text_to_vector(text):
+    words = Word.findall(text)
+    return Counter(words)
+
+for p in Project_list:
+    temp = df1[df1['Project Name'] == p]
+    l1 = list(temp[~(pd.isna(temp['Location Identifier_y']))]['Location Identifier_y'].unique())
+    for l in l1:
+        temp1 = temp[temp['Location Identifier_y'] == l]
+        l2 = list(temp1[~(pd.isna(temp1['Location ID']))]['Location ID'].unique())
+        for i in range(0, len(l2)):
+            for j in range(0,len(l2)):
+                if(~(pd.isna(temp1.iloc[i]['Address'] and temp1.iloc[j]['Address']))):    
+                    vec1 = text_to_vector(temp1.iloc[i]['Address'])
+                    vec2 = text_to_vector(temp1.iloc[j]['Address'])
+                    dict1[temp1.iloc[i]['Address'],temp1.iloc[j]['Address']] = get_cosine(vec1,vec2)
+                else:
+                    pass
+                        
+for p in Project_list:
+    temp = df1[df1['Project Name'] == 'BSCA|HMO RADV 2017|MRR|03170678']
+    l1 = list(temp[~(pd.isna(temp['Location Identifier_y']))]['Location Identifier_y'].unique())
+    for l in l1:
+        temp1 = temp[temp['Location Identifier_y'] == l]
+        l2 = list(temp1[~(pd.isna(temp1['Location ID']))]['Location ID'].unique())
+        for i in range(0, len(l2)):
+            for j in range(0, len(l2)):
+                vec1 = text_to_vector(temp1.iloc[i]['Address'])
+                vec2 = text_to_vector(temp1.iloc[j]['Address'])
+                dict1[temp1.iloc[i]['Address'], temp1.iloc[j]['Address']] = get_cosine(vec1,vec2)
+
+
+vec1 = text_to_vector(temp1.iloc[1]['Address'])
+count = 0
+vec2 = text_to_vector(temp1.iloc[2]['Address'])
+dict1[temp1.iloc[1]['Address'], temp1.iloc[2]['Address']] = get_cosine(vec1,vec2)
+
+
+### Phone Number Extraction from comments
+
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Jul  8 10:03:57 2018
+
+@author: INTN019
+"""
+
+import re
+import numpy as np
+import pandas as pd
+import itertools
+
+NRP_location = pd.read_csv('NRP_location.csv')
+call_comments = pd.read_csv('Location Call Log.csv')
+
+NRP_call_log = pd.merge(NRP_location, call_comments, how = 'left', on = 'Location ID')
+NRP_call_log = NRP_call_log[~pd.isna(NRP_call_log['Project Name'])]
+NRP_location_list = NRP_call_log['Location ID'].unique()
+NRP_location_list1 = NRP_location_list[0:10]
+dict1 = {}
+
+for location in NRP_location_list1:
+    temp = NRP_call_log[NRP_call_log['Location ID'] == location]
+    temp1 = temp[~pd.isna(temp['Comments'])]['Comments'].to_frame()    
+    x = []
+    for index, row in temp1.iterrows():
+        temp3 = (re.findall(r'[\+\(]?[1-9][0-9 .\-\(\)]{8,}[0-9]', row[0]))
+        temp3 = list(map(lambda x : re.sub('[()-.]', '', x), temp3))
+        temp3 = list(map(lambda x: x.replace(' ', ''), temp3))
+        phone_len10 = list(row.str.extractall(r'(?<!\d)(\d{10})(?!\d)', expand = False))
+        phone_len11 = list(row.str.extractall(r'(?<!\d)(\d{11})(?!\d)', expand = False))         
+#r'^[0-9]{10}$|^[0-9]{12}$'
+#        if not temp3:
+#           temp3 = re.sub('[()-]', '', temp3[0])
+#       else:
+#            pass
+#        flattened = [val for sublist in temp3 for val in sublist]
+        temp2 = temp3 + phone_len10 + phone_len11
+        temp2 = [x for x in temp2 if x != 0]    
+        flattened = [val for val in temp2]
+        x.append(flattened)
+        
+    if len(x) > 0:    
+        x = pd.DataFrame(x)
+#       x = x.drop_duplicates()  
+        x = x.apply(lambda x: ','.join(x.dropna().astype(str)), axis = 1)
+        x = pd.DataFrame(x)
+        x = x.apply(lambda x: ','.join(x.dropna().astype(str)), axis = 0) 
+    x = x[0].split(",")
+    x = list(set(x))
+#    x = set(x)
+#   x = [ i for i in iter(x) ]
+    dict1[location] = x  
+    
+di = pd.DataFrame(list(dict1.items()), columns=['Location ID', 'Phone Number'])
+
+for index, row in di.iterrows():
+    for i in range:
+        if len(row[1][i]) > 12:
+            pass
+        else:
+            b.append(row[1][i])
+    
+    
+a = see.iloc[5]['Phone Number'].split(',')
+
+if len(a[1])>12:
+    pass
+else:
+    b.append(a[1])
+  
+
+
+di.to_csv('location_with_phone_number_dict.csv', index = False)
+
+    
+    
+    
+#temp2 = temp1.apply(lambda x : re.findall(r'[\+\(]?[1-9][0-9 .\-\(\)]{8,}[0-9]', x))
+#temp2 = temp2.astype(str).apply(lambda x : re.sub('[()-]', '', x)).to_frame()
+#temp2 = temp2.str.replace('[', '', regex = True).replace(']', '', regex = True).replace(' ', '', regex = True)
+#temp2 = temp2.astype(str).apply(lambda x : re.sub('['['\']'-]', '', x)).to_frame()
+
+    myArray = [[v.strip() for v in x] for x in myArray]
+
+    phone_len12 = temp1.str.extract(r'(?<!\d)(\d{12})(?!\d)', expand=False)    
+        
+Source = call_comments['Comments'][0:10]
+y = pd.DataFrame()
+
+z = y['comment'].astype(str).apply(lambda x: pd.Series(x.split(',')))
+
+
+#flat_list = [item for item in temp2]
+#temp2 = temp2.stack().to_frame().T
+#flat_list = [item for sublist in see for item in sublist]
+#merged = list(itertools.chain.from_iterable(temp2))
+
+
+### Provider Analysis ___
+
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jun 26 20:32:12 2018
+
+@author: INTN019
+"""
+
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Jun 22 18:57:57 2018
+
+@author: INTN019
+"""
+import numpy as np
+import pandas as pd
+
+df = pd.read_excel("New_ProviderDB.xlsx")
+df1 = df.iloc[:, [0,4,5]]
+
+Prov_list = df1['Provider Full_Name + NPI'].unique()
+outdict_={}
+Provider_Charts = {}
+count = 0
+x = range(0, 505445)
+Prov_list1 = Prov_list[0:100000]
+Prov_list2 = Prov_list[100000:200000]
+Prov_list5 = Prov_list[400000:507197]
+
+for prov in Prov_list5:
+    temp = df1[df1['Provider Full_Name + NPI'] == prov]
+    temp1 = temp[~(pd.isna(temp['Primary Phone No']) | pd.isna(temp['Secondary Phone No']))]
+    phone1 = temp1.set_index('Primary Phone No')['Secondary Phone No'].to_dict()
+    phone2 = temp1.set_index('Secondary Phone No')['Primary Phone No'].to_dict()   
+    phone1.update(phone2)
+    output = [] 
+    al=list(temp[~(pd.isna(temp['Primary Phone No']))]['Primary Phone No'])
+    al1=list(temp[~(pd.isna(temp['Secondary Phone No']))]['Secondary Phone No'])
+    al=al+al1
+    for i in al:
+        if ((i not in output)):
+            if (i in phone1):
+                if (phone1[i] not in output):
+                    output.append(i)
+            else:
+                output.append(i)
+        else:
+            pass
+    a = len(output) 
+    outdict_[prov]=a
+
+pn=list(df1[~(pd.isna(df['Primary Phone No']))]['Primary Phone No'].unique())
+sn=list(df1[~(pd.isna(df['Secondary Phone No']))]['Secondary Phone No'].unique())
+psn = pn + sn
+
+X = df1[~(pd.isna(df1['Primary Phone No']) | pd.isna(df1['Secondary Phone No']))]
+P1 = X.set_index('Primary Phone No')['Secondary Phone No'].to_dict()
+P2 = X.set_index('Secondary Phone No')['Primary Phone No'].to_dict()   
+P1.update(P2)
+p_output = {} 
+
+for i in psn:
+    if ((i not in p_output)):
+        if (i in P1):
+            if P1[i] not in p_output:
+                p_output[i] = x[count]
+                count+= 1
+        else:
+            p_output[i] = x[count]
+            count+= 1
+    else:
+        pass   
+    
+for i in psn:
+    if(i not in p_output):
+        if(i in P1):
+            if P1[i] in p_output:
+                p_output[i] = p_output[P1[i]]
+        else:
+            p_output[i] = p_output[P1[i]]
+    else:
+        pass
+
+di = pd.DataFrame(list(outdict1.items()), columns=['Full_Name_NPI', 'Locations'])
+di.to_csv('outdict1', index = False)
+
+de = pd.DataFrame(list(p_output.items()), columns =['Primary Phone No', 'Location Identifier'])
+
+y = pd.merge(df, de, how = 'left', on = "Primary Phone No")
+y.to_csv('New_ProviderDB.csv', index = False)
+
+a = pd.read_csv('New_ProviderDB.csv')
+
+unique_client = df.groupby('FP')['Provider..Client.Name'].nunique()
+unique_project = df.groupby('FP')['Project.Name'].nunique()
+unique_year = df.groupby('FP')['Year'].nunique()
+
+analysis = unique_location_Phone.merge(unique_client, on=['FP'])
+analysis = analysis.merge(unique_location_Zip, on=['FP'])
+analysis = analysis.merge(unique_year, on=['FP'])
+
+analysis.to_csv('Report_1.csv', index = False)
+
+   
+dict = pd.DataFrame(outdict_)
+pd.DataFrame(outdict_).to_csv('outdict1.csv', index=False)
+di = pd.DataFrame(outdict_.items(), columns=['Full_Name_NPI', 'Locations'])
+outdict1 = outdict_
+di = pd.DataFrame(outdict1.items(), columns=['Full_Name_NPI', 'Locations'])
+outdict1.items()
+
+
+### Removing Stopwords
+
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Jun 25 23:35:02 2018
+
+@author: INTN019
+"""
+import numpy as np
+import pandas as pd
+
+stop = ['MD', 'ANP', 'NP', 'ACNP', 'WHNP', 'HS', 'LLP', 'SG', 'DPM', 'ARPN', 'PCP', 'OF', 'ME']
+
+df = pd.read_csv('BCBS.csv')
+df['Full_Name'] = df['Full_Name'].astype(str)
+def f(col):
+    wl=col.split(" ")
+    a=""
+    for w in wl:
+        if w not in stop:
+            a=a+" "+w
+        else:
+            pass
+    a=a.strip()
+    return a
+
+df['Full_Name_C']=df['Full_Name'].apply(f)
+
+df.to_csv('BCBS.csv', index = False)
+
+
+### XML_and_PDF_segregate
+
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jul 24 17:23:25 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+from shutil import copyfile
+import os
+
+list1 = os.listdir(r"C:\Users\intn019\Desktop\temp")
+exc = pd.read_excel('Ephesoft 1.xlsx')
+exc['Original File Name'] = exc['Original File Name'].str[4:]
+ 
+exc_list = exc['Original File Name'].tolist()
+              
+for l in exc_list:
+    for lis in list1:    
+        if str(l) in lis:
+            if str(lis).endswith('.xml'):
+                copyfile(r'C:\Users\intn019\Desktop\temp\%s' %lis , r'C:\Users\intn019\Desktop\temp\temp2\%s.xml' %lis)
+            elif str(lis).endswith('.pdf'):
+                copyfile(r'C:\Users\intn019\Desktop\temp\%s' %lis, r'C:\Users\intn019\Desktop\temp\temp1\%s.pdf' %lis)
+ 
+cleanedList = [x for x in exc_list if str(x) != 'nan']
+cleanedList = [x for x in cleanedList if str(x) != '']
+
+for l in cleanedList:
+    for lis in list1:    
+        if str(l) in lis:
+            if str(lis).endswith('.xml'):
+                os.rename(r'C:\Users\intn019\Desktop\temp\temp2\%s' %lis , r'C:\Users\intn019\Desktop\temp\temp2\%s.xml' %l)
+                #copyfile(r'C:\Users\intn019\Desktop\temp\%s' %lis , r'C:\Users\intn019\Desktop\temp\temp2\%s.xml' %lis)
+            elif str(lis).endswith('.pdf'):
+                os.rename(r'C:\Users\intn019\Desktop\temp\temp1\%s' %lis, r'C:\Users\intn019\Desktop\temp\temp1\%s.pdf' %l)
+                #copyfile(r'C:\Users\intn019\Desktop\temp\%s' %lis, r'C:\Users\intn019\Desktop\temp\temp1\%s.pdf' %lis)
+
+list2 = [i for i in list1 if str(i).endswith('.xml')]
+
+list2 = os.listdir(r"C:\Users\intn019\Desktop\temp\temp2")
+
+for l in cleanedList:
+    for lis in list2:
+        if str(l) in lis:
+            os.rename(lis , l + '.xml')            
+        else: 
+            pass
+#        os.rename(r'C:\Users\intn019\Desktop\temp\temp1\%s' %lis, r'C:\Users\intn019\Desktop\temp\temp1\%s.pdf' %l)
+        
+
+### ZipCode_filling_city
+
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Jul 10 12:14:22 2018
+
+@author: INTN019
+"""
+
+import numpy as np
+import pandas as pd
+from uszipcode import ZipcodeSearchEngine
+
+zipcode = pd.read_csv('Zip_code.csv')
+df = pd.read_csv('no_of_address_of_provider.csv')
+
+zipcode = zipcode.rename(columns = {'Name' : 'Location.ID'})
+
+y = pd.merge(df, zipcode, how = 'left', on = "Location.ID")
+
+zip_city = y[((~pd.isna(y['ZIP_Code__c'])) & (pd.isna(y['City'])))]
+
+zip_list = zip_city['ZIP_Code__c'].tolist()
+
+search = ZipcodeSearchEngine()
+zipcode = search.by_zipcode(zip_list)
+
+dict_city = {}
+
+for i in zip_list:
+    zipcode = search.by_zipcode(i)
+    dict_city[i] = zipcode.City
+    
+
+de = pd.DataFrame(list(dict_city.items()), columns =['ZIP_Code__c', 'City'])
+zip_city1 = pd.merge(zip_city, de, how = 'left', on = "ZIP_Code__c")
+zip_city1.pop('City_x')
+
+zip_city2 = zip_city1.iloc[:,[0,1,2,3,9,4,5,6,7,8]]
+zip_city2 = zip_city2.rename(columns = {'City_y' : 'City'})
+
+Non_zip_city = y[~((~pd.isna(y['ZIP_Code__c'])) & (pd.isna(y['City'])))]
+
+new_y = pd.concat([Non_zip_city,zip_city2], axis=0)
+new_y.to_csv('no_of_address_of_provider.csv', index = False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+        
+        
+        
+        
+        
+
